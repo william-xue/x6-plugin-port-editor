@@ -1,0 +1,8 @@
+# 依赖与构建产物不入库：克隆后 `npm install`（会自动跑 prepare → 构建 dist）或手动 `npm run build`
+node_modules/
+dist/
+
+# 测试/调试临时产物
+.playwright-cli/
+*.log
+*.tgz

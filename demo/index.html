@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>x6-plugin-port-editor · demo</title>
+    <style>
+      body {
+        margin: 0;
+        font: 13px/1.6 -apple-system, "PingFang SC", Arial, sans-serif;
+        color: #1f1f1f;
+      }
+      header {
+        padding: 8px 14px;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      header label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: #444;
+      }
+      button,
+      select {
+        font: inherit;
+        padding: 4px 10px;
+        border: 1px solid #5f95ff;
+        background: #fff;
+        color: #2b5fd9;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      button.active {
+        background: #5f95ff;
+        color: #fff;
+      }
+      #hint {
+        color: #666;
+        flex: 1 1 380px;
+      }
+      #status {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        color: #333;
+      }
+      #body {
+        display: flex;
+        height: calc(100vh - 96px);
+      }
+      #palette {
+        width: 132px;
+        border-right: 1px solid #eee;
+        padding: 8px;
+        flex: none;
+      }
+      #palette .title {
+        color: #888;
+        font-size: 12px;
+        margin-bottom: 6px;
+      }
+      #main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+      }
+      #graph {
+        flex: 1;
+      }
+      #json-panel {
+        height: 176px;
+        border-top: 1px solid #eee;
+        padding: 6px 10px 10px;
+        display: flex;
+        flex-direction: column;
+      }
+      #json-panel .title {
+        color: #888;
+        font-size: 12px;
+        margin-bottom: 4px;
+      }
+      #json {
+        flex: 1;
+        font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 6px;
+        resize: none;
+        white-space: pre;
+      }
+      /* 潮流方向动画（虚线流动） */
+      @keyframes x6pe-flow {
+        to {
+          stroke-dashoffset: -300;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <button id="btn-add-pin" type="button">添加引脚</button>
+      <button id="btn-clear" type="button">清空全部引脚</button>
+      <button id="btn-export" type="button">导出 JSON</button>
+      <button id="btn-import" type="button">导入 JSON</button>
+      <label
+        >连线样式
+        <select id="edge-style">
+          <option value="arrow">默认（X6 自带 classic 箭头）</option>
+          <option value="plain">无箭头</option>
+          <option value="dashed">虚线 · 无箭头</option>
+          <option value="flow">虚线流动（潮流方向感）</option>
+          <option value="jump">跳线（jumpover 连接器）</option>
+        </select>
+      </label>
+      <span id="hint">
+        加引脚：点「添加引脚」→ 鼠标移到元件轮廓 → 点一下；或直接从左侧调色板拖「引脚」到元件上。
+        拉线：从引脚拖拽。删引脚：悬停引脚点「×」。Esc 退出。
+      </span>
+      <span id="status">ready</span>
+    </header>
+    <div id="body">
+      <div id="palette"><div class="title">调色板（可拖拽）</div></div>
+      <div id="main">
+        <div id="graph"></div>
+        <div id="json-panel">
+          <div class="title">
+            图数据（JSON）——「导出 JSON」把当前整张图（含引脚、引脚位置、连线端点绑定）写进来；「导入 JSON」按这里的 JSON 重建整张图
+          </div>
+          <textarea id="json" spellcheck="false" placeholder="点「导出 JSON」生成；或粘贴一份 JSON 后点「导入 JSON」"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- demo 用 UMD 构建，无需打包器；真实项目里 import { PortEditor } from 'x6-plugin-port-editor' -->
+    <script src="../node_modules/@antv/x6/dist/x6.min.js"></script>
+    <script src="../dist/index.umd.js"></script>
+    <script src="./demo.js"></script>
+  </body>
+</html>

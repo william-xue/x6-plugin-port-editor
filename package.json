@@ -1,0 +1,50 @@
+{
+  "name": "x6-plugin-port-editor",
+  "version": "0.1.0",
+  "description": "AntV X6 interactive pin editor: click on an element's outline to add a pin, hover a pin to remove it. Ships as a pure plugin — no X6 core changes required.",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "unpkg": "dist/index.umd.js",
+  "jsdelivr": "dist/index.umd.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs",
+      "default": "./dist/index.mjs"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "node build.mjs",
+    "prepare": "node build.mjs",
+    "types": "tsc -p tsconfig.json",
+    "demo": "node scripts/serve.mjs",
+    "test:e2e": "bash test/e2e.sh"
+  },
+  "keywords": [
+    "x6",
+    "antv",
+    "port",
+    "pin",
+    "plugin",
+    "diagram",
+    "graph-editor"
+  ],
+  "peerDependencies": {
+    "@antv/x6": ">=3.0.0"
+  },
+  "devDependencies": {
+    "@antv/x6": "^3.1.8",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.6.0"
+  },
+  "license": "MIT"
+}
