@@ -75,6 +75,7 @@ export class PortEditor implements GraphPlugin {
   private hadPrevInteracting = false
   private prevInteracting: unknown = undefined
   private wasPannable = false
+  private pressAt: { x: number; y: number } | null = null
 
   private warned = new Set<string>()
   private pendingOptions?: PortEditorOptions
@@ -149,10 +150,56 @@ export class PortEditor implements GraphPlugin {
     this.overlay.showPreview(hit.client)
   }
 
-  private onNodeClick = (args: { e: MouseEvent; node: Node }) => {
+  /**
+   * X6 Selection's node box is `pointer-events: auto` and covers the element outline — i.e.
+   * exactly where pins live. With it enabled, pressing a pin after selecting the element
+   * cannot start a wire. Warn once instead of silently rewriting the host's plugin config.
+   */
+  private warnAboutSelectionBox() {
+    const graph = this.graph as unknown as { getPlugin?: (name: string) => any }
+    if (typeof graph.getPlugin !== 'function') return
+    const selection = graph.getPlugin('selection')
+    if (!selection) return
+
+    const options = (selection.options || {}) as Record<string, unknown>
+    const boxInteractive =
+      options.showNodeSelectionBox === true && options.pointerEvents !== 'none'
+    if (boxInteractive) {
+      this.warnOnce(
+        'selection-box',
+        'X6 Selection 的节点选框会盖住元件轮廓（引脚所在处），选中元件后按引脚可能无法起线。' +
+          '建议 new Selection({ pointerEvents: "none" }) 或 showNodeSelectionBox: false。' +
+          '（本插件自身的点击与落点判定走 elementsFromPoint，可穿透覆盖层）',
+      )
+    }
+  }
+
+  /**
+   * Click handling is done on the container (not via X6's `node:click`) on purpose:
+   * overlays such as X6 Selection's box (`div.x6-widget-selection-box`, which is
+   * `pointer-events: auto` and sits exactly on the element outline) swallow the click, so
+   * `node:click` never fires when a node is selected. Hit testing goes through
+   * `elementsFromPoint`, which sees the node under the overlay.
+   */
+  private onContainerMouseDown = (e: MouseEvent) => {
+    this.pressAt = { x: e.clientX, y: e.clientY }
+  }
+
+  private onContainerClick = (e: MouseEvent) => {
     if (!this.adding) return
-    const { e, node } = args
-    if (this.findPortElement(e.target as Element | null)) return
+
+    const target = e.target as Element | null
+    if (target && target.classList && target.classList.contains('x6-pe-delete')) return
+    if (this.findPortElement(target)) return
+
+    // a drag (not a click): don't turn it into a pin
+    if (this.pressAt) {
+      const moved = Math.hypot(e.clientX - this.pressAt.x, e.clientY - this.pressAt.y)
+      if (moved > 5) return
+    }
+
+    const node = this.nodeFromClientPoint(e.clientX, e.clientY)
+    if (!node) return
 
     const hit =
       this.hit && this.hit.node === node
@@ -197,10 +244,11 @@ export class PortEditor implements GraphPlugin {
     injectStyle()
     this.overlay = new Overlay(graph, this.options.className)
 
-    graph.on('node:click', this.onNodeClick)
     graph.on('scale', this.onGraphTransform)
     graph.on('translate', this.onGraphTransform)
     graph.on('resize', this.onGraphTransform)
+
+    this.warnAboutSelectionBox()
 
     return this
   }
@@ -214,6 +262,8 @@ export class PortEditor implements GraphPlugin {
     container.classList.add('x6-pe-adding')
     container.addEventListener('mousemove', this.onContainerMouseMove, true)
     container.addEventListener('mouseleave', this.onContainerMouseLeave, true)
+    container.addEventListener('mousedown', this.onContainerMouseDown, true)
+    container.addEventListener('click', this.onContainerClick, true)
     this.installMagnetGuard()
     this.installNodeMoveGuard()
     this.installPanningGuard()
@@ -232,6 +282,9 @@ export class PortEditor implements GraphPlugin {
     container.classList.remove('x6-pe-adding')
     container.removeEventListener('mousemove', this.onContainerMouseMove, true)
     container.removeEventListener('mouseleave', this.onContainerMouseLeave, true)
+    container.removeEventListener('mousedown', this.onContainerMouseDown, true)
+    container.removeEventListener('click', this.onContainerClick, true)
+    this.pressAt = null
     this.restoreMagnetGuard()
     this.restoreNodeMoveGuard()
     this.restorePanningGuard()
@@ -262,17 +315,23 @@ export class PortEditor implements GraphPlugin {
   }
 
   addPin(node: Node, local: Point) {
-    this.ensureGroup(node)
-    const portId = this.nextPortId(node)
-    node.addPort({
-      id: portId,
-      group: this.options.group,
-      args: this.toPortArgs(node, local),
-    })
-    if (this.options.onPortAdded) {
-      this.options.onPortAdded({ node, portId })
+    const model = (this.graph as unknown as { model?: { startBatch?: Function; stopBatch?: Function } }).model
+    if (model && typeof model.startBatch === 'function') model.startBatch('port-editor:add-pin')
+    try {
+      this.ensureGroup(node)
+      const portId = this.nextPortId(node)
+      node.addPort({
+        id: portId,
+        group: this.options.group,
+        args: this.toPortArgs(node, local),
+      })
+      if (this.options.onPortAdded) {
+        this.options.onPortAdded({ node, portId })
+      }
+      return portId
+    } finally {
+      if (model && typeof model.stopBatch === 'function') model.stopBatch('port-editor:add-pin')
     }
-    return portId
   }
 
   addPinAtClient(node: Node, clientX: number, clientY: number) {
@@ -342,11 +401,18 @@ export class PortEditor implements GraphPlugin {
 
   removePin(node: Node, portId: string) {
     if (!node.hasPort(portId)) return this
-    node.removePort(portId)
-    if (this.options.onPortRemoved) {
-      this.options.onPortRemoved({ node, portId })
+    const model = (this.graph as unknown as { model?: { startBatch?: Function; stopBatch?: Function } }).model
+    // one batch → removing a pin (and the wires X6 drops with it) is a single undo step
+    if (model && typeof model.startBatch === 'function') model.startBatch('port-editor:remove-pin')
+    try {
+      node.removePort(portId)
+      if (this.options.onPortRemoved) {
+        this.options.onPortRemoved({ node, portId })
+      }
+      return this
+    } finally {
+      if (model && typeof model.stopBatch === 'function') model.stopBatch('port-editor:remove-pin')
     }
-    return this
   }
 
   clearPins(node: Node) {
@@ -362,7 +428,6 @@ export class PortEditor implements GraphPlugin {
   dispose() {
     if (!this.graph) return
     this.stopAdding()
-    this.graph.off('node:click', this.onNodeClick)
     this.graph.off('scale', this.onGraphTransform)
     this.graph.off('translate', this.onGraphTransform)
     this.graph.off('resize', this.onGraphTransform)
