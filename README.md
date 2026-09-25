@@ -15,7 +15,9 @@ AntV X6 的**交互式引脚（pin / port）编辑器**插件：点一下工具�
 - 支持**异形元件**：落点是投影到元件真实轮廓（circle / polygon / path / rect…）上，不是包围盒
 - 两种入口：**点一下加引脚**（编辑模式）与**从调色板拖一个引脚到元件上**（Dnd）
 - 图可导出为 JSON 再原样复原（含引脚与"从哪个引脚出发"的连线绑定）
-- 版本：v0.1.0 ｜ 已在 @antv/x6 **3.1.8** + 真实 Chrome 上通过 59 条端到端断言（见 `test/EVIDENCE.md`）
+- 版本：v0.1.0 ｜ 已在 @antv/x6 **3.1.8** + 真实 Chrome 上通过 **94 条**端到端断言（插件 59 + 例子 35，见 `test/EVIDENCE.md` 与 `npm test`）
+- 上游形态：同一份实现已按官方插件形态提交到主仓 —— **antvis/X6#5093**
+  （`src/plugin/port-editor/` + `site/docs/tutorial/plugins/port-editor.{zh,en}.md` + 20 条 jsdom 单测；本仓是被上游接受前的可用形态，两者并行维护）
 
 ---
 
