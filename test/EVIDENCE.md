@@ -12,9 +12,9 @@
 | 源码对照版本 | antvis/X6 master **v3.1.7**（本地克隆 b14ca27） |
 | 浏览器 | 真实 Google Chrome（playwright-cli --browser=chrome，非 jsdom） |
 | 事件来源 | Playwright 真实鼠标/键盘事件（mousemove / mousedown / mouseup / press Escape / select），非页面内 dispatchEvent |
-| 断言总数 | **59**（`npm run test:e2e`） |
+| 断言总数 | **94**（插件 59 + 例子 35） |
 
-## 2. 端到端断言（`bash test/e2e.sh`）
+## 2. 插件端到端断言（`npm run test:e2e`，59 条）
 
 ```
 === x6-plugin-port-editor e2e (port 8751) ===
@@ -80,34 +80,58 @@ PASS  S16 no page errors                                   0
 === summary: 59 passed, 0 failed ===
 ```
 
-## 3. 覆盖的行为闭环
+覆盖：添加模式与三项守卫（元件不可拖/画布不可平移/本体起线被拦）、圆形与六边形**贴轮廓**落点、
+生成引脚 args 精度、模式内从引脚拉线、退出后逐项还原、点轮廓加引脚、拖拽建引脚（调色板）、
+连线样式预设、导出/导入**逐字节往返**。
 
-**A. 添加引脚模式（点一下加引脚）**
-1. 工具栏进入/退出模式；按钮文案随状态变化（Esc 退出时也同步）
-2. 模式内守卫：元件不可拖动、画布不可平移、本体起线被拦
-3. 轮廓落点预览与真实轮廓点偏差 **0px**（圆形）；生成引脚 `args` 与点击处误差 **≤2px**
-4. **六边形（异形轮廓）** 同样成立（polygon 边缘取点）
-5. **模式内从已有引脚拖拽拉线可用**；模式内按元件本体拖拽：不拉线、不加引脚、**不移动元件、不平移画布**
-6. Esc 退出 → `validateMagnet` / `interacting` 覆盖原样还原、panning 恢复、元件恢复可拖动
-7. 退出后本体拉线恢复原生行为；非添加模式点击元件不产生引脚
-8. 悬停引脚点「×」删除，**挂在该引脚上的连线一并删除**
+## 3. 例子端到端断言（`npm run test:examples`，35 条）
 
-**B. 拖拽建引脚（调色板 → 元件）**
-9. 拖「引脚」模板到圆形轮廓 → **引脚 +1 且落在轮廓上（≤3px）**，模板**不落地**成节点
-10. 普通模板（矩形）照常落地成新元件（节点数 +1）
+```
+=== examples e2e (port 8755) ===
+--- 例 1 · 01-basic ---
+PASS  E1 页面就绪                                      true
+PASS  E1 初始 3 元件 / 0 连线                        3/0
+PASS  E1 初始无引脚                                   0
+PASS  E1 进入添加模式                                true
+PASS  E1 轮廓落点预览出现                          block
+PASS  E1 点击生成引脚 pin-1                          ["pin-1"]
+PASS  E1 引脚组自动补为 pin                         pin
+PASS  E1 引脚贴在轮廓上（≤2px）                 true
+PASS  E1 Esc 退出添加模式                            false
+PASS  E1 从引脚拉线成功                             1
+PASS  E1 连线起点绑定到引脚                       pin-1
+PASS  E1 非添加模式点击不加引脚                 1
+PASS  E1 无页面报错                                   0
+--- 例 2 · 02-power-editor ---
+PASS  E2 页面就绪                                      true
+PASS  E2 3 元件 / 调色板 4 模板                     3/4
+PASS  E2 自定义元件形状已注册使用              power-ct
+PASS  E2 元件自带 terminal 端子组                   terminal
+PASS  E2 元件已被选中（选择框已出现）        1
+PASS  E2 选择框存在但不再遮挡轮廓（pointerEvents: none） true
+PASS  E2 落点判定可穿透可交互覆盖层           true
+PASS  E2 选中态下点轮廓仍能加端子（穿透选择框） ["T-1"]
+PASS  E2 端子组用项目自己的 terminal              terminal
+PASS  E2 端子贴在轮廓上（≤2px）                 true
+PASS  E2 撤销一次即移除该端子（一步撤销）  0
+PASS  E2 重做恢复该端子                             ["T-1"]
+PASS  E2 从端子拉线成功（选择框不再挡）     1
+PASS  E2 连线起点绑定到端子                       T-1
+PASS  E2 拖端子模板到主变 → 生成端子         1
+PASS  E2 端子模板未落地成元件                    3
+PASS  E2 拖拽生成的端子也贴轮廓（≤3px）     true
+PASS  E2 导出 JSON 含端子数据                       true
+PASS  E2 清空整图                                      0
+PASS  E2 导入成功                                      true
+PASS  E2 往返后状态完全一致                       {"nodes":[{"id":"n-breaker","pins":[]},{"id":"n-ct","pins":[{"id":"T-1","group":"terminal","args":{"x":2.01,"y":48.11}}]},{"id":"n-transformer","pins":[{"id":"T-1","group":"terminal","args":{"x":130.64,"y":26.22}}]}],"edges":[{"source":{"cell":"n-ct","port":"T-1"},"target":{"cell":"n-breaker","port":null}}]}
+PASS  E2 无页面报错                                   0
+=== summary: 35 passed, 0 failed ===
+```
 
-**C. 连线样式（X6 edge 配置）**
-11. 「无箭头」→ `line.targetMarker === null`；「虚线」→ `strokeDasharray === '6 3'`；「流动」→ `block` 箭头 + `style.animation`
-
-**D. 导出 / 导入往返（图 → JSON → 图）**
-12. 造一条**从引脚出发**的连线（`source.port = pin-1`）后导出
-13. 导出 JSON 含引脚（`ports.groups` + `ports.items` + `args`）与连线端点绑定
-14. `clearCells()` 清空整张图（节点数 0）后导入
-15. **状态逐字节复原**：节点集合+位置、每个引脚的 id/group/args（含 `1.08 / 57.83` 这类小数）、每条边的 `source/target.cell` 与 `source.port` 完全一致
-16. 复原后的引脚仍可交互（悬停出现删除徽章）
-
-**E. 卫生**
-17. 全程 `window.onerror` = 0
+覆盖：例 1 最小接入全链路（预览/生成/贴轮廓/退出/拉线/非模式不误加）；
+例 2 电力场景（自定义元件形状生效、项目自己的 `terminal` 组与 `T-` 前缀、
+**选中元件后被选择框覆盖的轮廓仍可加端子**（`elementsFromPoint` 穿透）、
+从端子拉线、**History 一步撤销/重做**、调色板拖端子模板不落地、导出导入一致）。
 
 ## 4. 包形态冒烟
 
@@ -119,24 +143,26 @@ $ node -e "const m = require('./dist/index.cjs'); console.log(Object.keys(m).joi
 exports: PortEditor, collectOutlineElements, findNearestOutlinePoint
 ```
 
-产物：`dist/index.mjs`(ESM) / `index.cjs`(CJS) / `index.umd.js`(UMD，全局 `X6PluginPortEditor`) + 5 个 `.d.ts`；
-`npx tsc -p tsconfig.json --noEmit` 无错误；对 `@antv/x6` 仅类型引用，三产物**零运行时依赖**。
+产物：`dist/index.mjs`(ESM) / `index.cjs`(CJS) / `index.umd.js`(UMD，全局 `X6PluginPortEditor`) + `.d.ts`；
+`tsc --noEmit` 无错误；对 `@antv/x6` 仅类型引用，三产物**零运行时依赖**。
+本地消费方式（tgz / 拷 dist / file: 链接 / 拷 src）见 README §2.1。
 
 ## 5. 复现步骤
 
 ```bash
 cd x6-plugin-port-editor
 npm install
-npm run build        # esbuild 三产物 + tsc 声明
-npm run test:e2e     # 静态服务 + 真实 Chrome 跑 59 条断言
-npm run demo         # http://127.0.0.1:8732/demo/index.html
+npm run build
+npm test              # 94 条断言（两套）
+npm run demo          # http://127.0.0.1:8732/demo/index.html （examples/ 也可以直接打开）
 ```
 
 ## 6. 未覆盖 / 未验证（诚实披露）
 
-- 引脚**拖动调整位置**：未实现（X6 中引脚 mousedown 默认被解释为拉线，见 issue #4648/#4649）
+- 引脚**拖动调整位置**：未实现（引脚 mousedown 在 X6 里默认被解释为拉线，见 issue #4648/#4649）
 - 引脚 hide/show：未实现（属 model 层 API，插件无法新增，需核心改动）
 - 大规模节点（数百个）命中性能：无基准测试
 - 旋转节点、缩放画布下的落点精度：逻辑上由 SVG CTM 覆盖，**未单独写断言**
 - 触摸屏 / 触控笔：未测试
-- 导出/导入只覆盖 **cell 数据**：视图缩放与平移需另外存（demo 已示范），选中状态、业务层挂在 cell.data 之外的状态不在其中
+- 导出/导入只覆盖 cell 数据：视图缩放与平移需另外存（demo 与例 2 已示范），选中状态与业务层外部状态不在其中
+- 从 Dnd 落点建引脚时，落点与鼠标位置存在 ≤3px 偏差（用模板中心近似鼠标落点）

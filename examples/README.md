@@ -1,0 +1,169 @@
+# 例子（examples）
+
+两个例子都由浅入深演示**"插件怎么跟已有的 AntV X6 结合"**，以及**引脚功能是怎么实现的**。
+不带打包器，直接开静态服务即可跑：
+
+```bash
+cd x6-plugin-port-editor
+npm install          # 会自动构建 dist（prepare 脚本）
+npm run demo         # 起静态服务（端口 8732）
+```
+
+| 例子 | 入口 | 看什么 |
+|------|------|--------|
+| 例 1 · 最小接入 | `/examples/01-basic/index.html` | 已有 X6 图 → 接上 8 行 → 加引脚 / 拉线 / 删除全链路；页面左侧把「你原有的代码」和「新增的接入代码」并排列出 |
+| 例 2 · 电力组件场景 | `/examples/02-power-editor/index.html` | 自定义元件形状（CT / 主变 / 断路器）、项目自己的端子组与样式、选中态穿透、与 Selection / History 共存、调色板拖拽建元件与建端子、导出导入 |
+
+两个例子都有自动化验证：`npm run test:examples`（35 条断言，真实 Chrome）。
+
+---
+
+## 例 1：最小接入（01-basic）
+
+页面右侧的代码与页面行为一一对应，只有两段：
+
+```js
+// ① 你原有的代码：Graph 配置、元件 attrs、你自己的端口定义 —— 一行都不用改
+const graph = new Graph({ container: '#graph', connecting: { allowBlank: false } })
+graph.addNode({ id: 'a', /* ... */, ports: { items: [] } })   // 连端口组都没声明也没关系
+
+// ② 新增的接入代码
+const portEditor = new PortEditor({
+  onModeChange: (adding) => { btn.classList.toggle('active', adding) },  // 可选用：同步工具栏
+})
+graph.use(portEditor)
+btn.addEventListener('click', () => {
+  portEditor.isAdding() ? portEditor.stopAdding() : portEditor.startAdding()
+})
+```
+
+跑起来会发生什么：
+
+1. 点「添加引脚」→ 画布进入添加模式（光标变十字；元件暂不可拖动、画布暂不可平移）
+2. 鼠标移到元件轮廓 → 出现蓝色落点预览（投影到**真实轮廓**，不是包围盒）
+3. 点一下 → 生成 `pin-1`，位置就是落点（`ports.groups.pin` 由插件自动补一份默认定义）
+4. `Esc` 退出 → 从引脚拖到另一个元件即可拉线（X6 原生 magnet）
+5. 重新进入模式，悬停引脚 → 点「×」删除（连在它上面的线一并删掉）
+
+---
+
+## 例 2：电力组件场景（02-power-editor）
+
+这一版贴着你项目的样子来：
+
+```js
+// 1) 自定义元件形状：注册一次，全项目复用
+Graph.registerNode('power-ct', {
+  shape: 'power-ct', width: 96, height: 96,
+  markup: [{ tagName: 'circle', selector: 'body', attrs: { cx: 48, cy: 48, r: 46 } },
+           { tagName: 'text', selector: 'label', attrs: { x: 48, y: 54, textAnchor: 'middle' } }],
+  attrs: { body: { fill: '#fff', stroke: '#5F95FF', strokeWidth: 2 } },
+}, true)
+
+// 2) 项目自己的端子组（方形端子 + 标签），名字自己定
+const TERMINAL_GROUP = {
+  position: 'absolute',
+  markup: [{ tagName: 'rect', selector: 'body' }, { tagName: 'text', selector: 'label' }],
+  attrs: {
+    body: { x: -5, y: -5, width: 10, height: 10, fill: '#1677FF', magnet: true },  // magnet 决定能否起线
+    label: { fontSize: 9, fill: '#666', textAnchor: 'middle', y: 16 },
+  },
+  zIndex: 2,
+}
+const mkPorts = () => ({ groups: { terminal: TERMINAL_GROUP }, items: [] })
+
+// 3) 接入插件：指定你自己的组名与 id 前缀
+const portEditor = new PortEditor({
+  group: 'terminal',        // ← 用项目里的端子组名（默认是 'pin'）
+  idPrefix: 'T',            // 端子 id：T-1、T-2…
+  groupConfig: TERMINAL_GROUP,   // 万一某元件没声明该组时兜底
+})
+graph.use(portEditor)
+
+// 4) 与 Selection / History 共存
+graph.use(new Selection({
+  enabled: true, rubberband: true, multiple: true, showNodeSelectionBox: true,
+  pointerEvents: 'none',    // ← 关键：否则选择框会盖住端子所在处的轮廓
+}))
+graph.use(new History({ enabled: true }))
+
+// 5) 调色板拖拽：元件模板照常落地；「端子」模板落到元件上变成端子（自身不落地）
+const dnd = new Dnd({ target: graph, validateNode: portEditor.createDndDropValidator() })
+graph.use(dnd)
+palette.on('node:mousedown', ({ node, e }) => dnd.start(node, e))
+```
+
+这一版能验证到的行为（e2e 都断言了）：
+
+- 元件是自定义形状（圆的 CT、六边形主变、圆角矩形断路器）→ 落点沿各自**真实轮廓**
+- 端子组用项目自己的 `terminal`、id 前缀 `T`
+- **选中元件后**（选择框已出现）仍能点轮廓加端子 —— 因为插件的点击与落点判定走 `document.elementsFromPoint`，能穿透覆盖层
+- 端子（连在它上面的线）增删**可撤销**；加一个端子 = **一步撤销**（插件把"补组定义 + 加端子"合进一个 batch）
+- 调色板拖端子模板到主变 → 主变上生成端子，模板**不落地**成元件
+- 导出 JSON（端子 + "从哪个端子出发"的绑定）→ 清空整图 → 导入 → 状态**逐字节一致**
+
+---
+
+## 引脚功能是怎么实现的（原理）
+
+以下每一步都可以在 `src/` 里找到对应实现。
+
+### 1. 引脚在 X6 里本来就是"数据"，不是"交互"
+
+- 数据结构：`node.ports.groups`（每个组的布局算法与样式）+ `node.ports.items[]`（每个引脚，含 `args` 位置）
+- 渲染：`NodeView.renderPorts()` 按 `port-layout` 注册表算位置（`absolute` / `line` / `ellipse…`）并缓存 DOM
+- 交互：引脚上的 `magnet: true` 才是"能不能从这里起线"的开关
+
+插件做的事就是**用交互去写这份数据**：`node.addPort({ id, group, args })`。所以引脚天然可序列化、可撤销、可导出。
+
+### 2. 落点：把指针投影到"真实轮廓"上（`src/outline.ts`）
+
+1. 取节点 markup 里的几何图形（`rect/circle/ellipse/path/polygon/polyline`，排除端口/标签/工具层）
+2. 沿轮廓用 `getTotalLength()` + `getPointAtLength()` 采样（约每 2px 一个点，带缓存）
+3. 把指针用 `getCTM()/getScreenCTM()` 换算到该图形的用户空间，找最近采样点，再在相邻两点之间做线段最近点修正
+4. 多个图形（如变压器 = 矩形 + 圆）取**全局最近**的那条轮廓
+5. 结果换算回节点本地坐标 —— 这正是 `ports.items[].args` 所在的坐标系，所以位置一次写对
+
+几何解析全交给 CTM，**平移/缩放/节点旋转都不用特判**。这也解释了为什么圆、多边形、自定义 path 都能贴合。
+
+### 3. 悬停怎么感知：X6 核心没有 hover 级 mousemove
+
+X6 全仓只有类型定义里出现 `'mousemove'`，**核心从不绑定原生 `mousemove`**；`node:mousemove` 只在拖拽过程中触发。
+所以轮廓悬停预览必须由插件自己在 `graph.container` 上监听 `mousemove`（capture 阶段），命中用 `document.elementsFromPoint(...)`（复数，返回堆叠栈）逐层找 `.x6-node` —— 这一步很关键：X6 的选择框、Dnd 的拖拽层都是 `pointer-events: auto`，单数的 `elementFromPoint` 会被它们挡住。
+
+### 4. 添加模式为什么是"一整套守卫"
+
+「添加引脚」是一个编辑模式，语义是**只改变"点击"的含义，不改变"从引脚拖拽"的含义**。模式内临时改三个全局开关，退出逐项还原：
+
+| 临时改动 | 不改会怎样 |
+|----------|-----------|
+| `graph.options.connecting.validateMagnet` 只放行引脚 magnet | 按元件本体（本来就是 magnet）会被解释成拉线 |
+| `graph.options.interacting` 里 `nodeMovable: false` | 按元件加引脚会被当成"拖动元件" |
+| `graph.disablePanning()` | X6 在 `node:unhandled:mousedown` 时会启动平移 → "点元件"变成"拖动画布"，视图静默位移、后续坐标全错 |
+
+三条都是**运行时叠加**（X6 在调用时读取这些选项），因此退出后能原样还原，不碰任何 cell 数据；e2e 对三项都断言了"退出后还原"。
+
+### 5. 点击也走容器层，而不是 X6 的 `node:click`
+
+原因同 §3：覆盖层会吞掉点击。插件在 `graph.container` 上监听 `click`（capture），用 `elementsFromPoint` 找元件，并忽略"按下后移动超过 5px"的拖拽。这样即使元件被选中、选择框压在轮廓上，点轮廓依然能加引脚。
+
+### 6. 删除引脚：X6 内建语义 + 一步撤销
+
+X6 自己会在引脚被删掉时移除挂在它上面的边（`Node.processRemovedPort`）。插件把"删引脚 + 连带删边"包进一个 `model.startBatch/stopBatch`，所以是一次撤销。
+**不做**的事：不在接线时隐式生成引脚（设计红线，见 `docs/INTEGRATION.md` §8）。
+
+---
+
+## 改成你自己的东西
+
+| 想改什么 | 改哪里 |
+|----------|--------|
+| 元件形状 / 大小 / 标签 | `Graph.registerNode(...)` 的 `markup` 与 `attrs`（例 2） |
+| 端子外观（方形/圆形/带标签） | `TERMINAL_GROUP`，或直接用节点上的 `ports.groups.<你的组名>` |
+| 端子组名与 id 前缀 | `new PortEditor({ group: '你的组名', idPrefix: 'X' })` |
+| 位置存储语义（resize 行为） | `positionUnit: 'local' \| 'percent'` |
+| 只指定某条轮廓 | `outlineSelector: 'body'` |
+| 一次只加一个就退出模式 | `stopAfterAdd: true` |
+| 不想让插件写任何数据 | `autoCreateGroup: false`（组必须自己声明） |
+
+更多共存与排查细节见 [`../docs/INTEGRATION.md`](../docs/INTEGRATION.md)。

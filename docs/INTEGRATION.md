@@ -4,6 +4,7 @@
 > 现在想加「交互式添加引脚」这个能力，且**不想改 X6 核心**。
 >
 > 本文所有结论都在 @antv/x6 **3.1.8** + 真实 Chrome 上实测过；断言与证据见 `test/EVIDENCE.md`。
+> 想直接看跑起来的代码：**[`examples/`](../examples/README.md)** —— 例 1 最小接入、例 2 电力组件场景（含实现原理讲解）。
 
 ---
 
@@ -166,8 +167,9 @@ new PortEditor({ outlineSelector: 'body' })   // 用 markup 里 selector 为 bod
 | 插件 | 共存情况 |
 |------|----------|
 | `Dnd`（拖拽落图） | 可直接用插件给的校验器实现"从调色板拖一个引脚到元件上"：`new Dnd({ target: graph, validateNode: portEditor.createDndDropValidator() })`，详见 README §4.1 |
-| `Selection` / `Snapline` / `Scroller` / `MiniMap` | 不冲突；插件不动这些插件的状态 |
-| `History` | 引脚增删/移动都走 model API（`node.addPort/removePort/portProp`），因此**可撤销**；一次拖线＋建引脚若要合并成一步，自己用 `graph.model.startBatch()/stopBatch()` 包一层 |
+| `Selection` | ⚠️ **必须注意**：X6 的节点选框 `div.x6-widget-selection-box` 是 `pointer-events: auto`，正好盖在元件轮廓上（引脚所在处）。选中元件后按引脚**起不了线**。处理：`new Selection({ pointerEvents: 'none' })`（推荐）或 `showNodeSelectionBox: false`。插件检测到这种情况会 `console.warn` 提醒；插件自身不受影响（点击与落点判定走 `elementsFromPoint`，可穿透覆盖层）。实测见 `examples/02-power-editor` |
+| `Snapline` / `Scroller` / `MiniMap` | 不冲突；插件不动这些插件的状态 |
+| `History` | 引脚增删都走 model API，因此**可撤销**；插件已把"补组定义 + 加引脚"、"删引脚 + X6 连带删掉的线"各自合进一个 `model.startBatch/stopBatch`，所以**一步撤销**。宿主自己组合多步操作时也可用同样手法合批 |
 | `Keyboard` | 插件自己监听 `Escape`（只在添加模式内生效），不与 Keyboard 插件的快捷键注册冲突 |
 | `Transform` | 与 `positionUnit: 'percent'` 配合更自然（resize 后引脚按比例贴合） |
 
@@ -202,6 +204,7 @@ graph.translate(state.viewport.tx, state.viewport.ty)
 |------|------|------|
 | 打包报 `Could not resolve "tslib"` | X6 的 `es/lib` 产物 import tslib，但 X6 未声明该依赖 | `npm i tslib` |
 | `tsc` 报 `TS7016: lodash-es`（6 条） | 符号链接安装时 TS 顺着链接解析到插件目录下的 `lodash-es` | `tsconfig` 开 `skipLibCheck: true` |
+| **选中元件后，按引脚拉不出线** | X6 Selection 的节点选框盖住轮廓（引脚就在轮廓上），`pointer-events: auto` | `new Selection({ pointerEvents: 'none' })` 或 `showNodeSelectionBox: false`；插件会 console.warn 提醒 |
 | 拖拽建边时报 `r.getSource is not a function` | `connecting.createEdge` 返回了普通对象 | 必须返回 Edge 实例：`this.createEdge(metadata)` |
 | 加了引脚后想点元件，结果画布被拖走了 | X6 `panning.enabled` 默认 `true`，`interacting:false` 只关元件拖动 | 只读小图/调色板显式 `panning: false`；插件在添加模式内会自动关 |
 | 从调色板拖东西上来，落点判定找不到元件 | Dnd 拖拽容器 `pointer-events: auto` 盖住画布，`elementFromPoint` 看不到元件 | 插件已用 `document.elementsFromPoint` 穿透；自己写落点判定时别用单数版本 |
@@ -239,8 +242,10 @@ graph.translate(state.viewport.tx, state.viewport.ty)
 
 ```bash
 npm install && npm run build
-npm run test:e2e     # 起静态服务 + 真实 Chrome，跑 59 条断言（含导出/导入往返）
-npm run demo         # http://127.0.0.1:8732/demo/index.html 手工验收
+npm run test:e2e          # 插件的 59 条断言（真实 Chrome：模式守卫、贴轮廓、删引脚、拖拽建引脚、连线样式、导出导入）
+npm run test:examples     # 两个例子的 35 条断言（最小接入 + 电力场景，含选中态穿透与 History 一步撤销）
+npm test                  # 上面两套一起跑
+npm run demo              # http://127.0.0.1:8732/demo/index.html 手工验收（examples/ 也可直接打开）
 ```
 
 `test/EVIDENCE.md` 记录了最近一次完整跑通的原始输出、覆盖清单，以及**明确未验证**的部分（引脚拖动、hide/show、大规模性能、旋转/缩放断言、触摸设备）。

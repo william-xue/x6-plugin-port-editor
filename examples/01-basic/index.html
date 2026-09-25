@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>例 1 · 最小接入：给已有 X6 图加「添加引脚」</title>
+    <style>
+      body {
+        margin: 0;
+        font: 13px/1.7 -apple-system, "PingFang SC", Arial, sans-serif;
+        color: #1f1f1f;
+      }
+      header {
+        padding: 10px 14px;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      button {
+        font: inherit;
+        padding: 5px 12px;
+        border: 1px solid #5f95ff;
+        background: #fff;
+        color: #2b5fd9;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      button.active {
+        background: #5f95ff;
+        color: #fff;
+      }
+      #hint {
+        color: #666;
+        flex: 1 1 420px;
+      }
+      #status {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        color: #333;
+      }
+      #wrap {
+        display: flex;
+        height: calc(100vh - 100px);
+      }
+      #graph {
+        flex: 1;
+        min-width: 0;
+      }
+      #code {
+        width: 430px;
+        border-left: 1px solid #eee;
+        padding: 10px 14px;
+        overflow: auto;
+        background: #fafafa;
+      }
+      #code h3 {
+        margin: 0 0 6px;
+        font-size: 13px;
+      }
+      #code pre {
+        margin: 0 0 14px;
+        padding: 8px 10px;
+        background: #fff;
+        border: 1px solid #eee;
+        border-radius: 4px;
+        font: 11.5px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
+        white-space: pre;
+        overflow-x: auto;
+      }
+      .note {
+        color: #888;
+        font-size: 12px;
+      }
+      .hl {
+        background: #e8f2ff;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <button id="btn-add-pin" type="button">添加引脚</button>
+      <span id="hint">
+        点「添加引脚」→ 鼠标移到任意元件轮廓上（出现蓝色落点）→ 点一下生成引脚 → 从引脚拖拽连线 →
+        再进模式悬停引脚点「×」删除；Esc 退出。
+      </span>
+      <span id="status">ready</span>
+    </header>
+
+    <div id="wrap">
+      <div id="graph"></div>
+      <div id="code">
+        <h3>① 你原有的代码（完全不动）</h3>
+        <pre>
+const graph = new Graph({
+  container: '#graph',
+  connecting: { allowBlank: false },
+})
+graph.addNode({
+  id: 'a', x: 80, y: 90, width: 130, height: 60,
+  attrs: { body: { fill: '#fff', stroke: '#5F95FF' },
+           label: { text: '设备 A' } },
+  /* 你自己的端口定义也照旧 */
+  ports: { groups: { pin: { position: 'absolute' } }, items: [] },
+})
+graph.addNode({ id: 'b', /* ...设备 B... */ })</pre
+        >
+
+        <h3>② 新增的接入代码（就这几行）</h3>
+        <pre class="hl">
+import { PortEditor } from 'x6-plugin-port-editor'
+
+const portEditor = new PortEditor()
+graph.use(portEditor)
+
+document.getElementById('btn-add-pin')
+  .addEventListener('click', () => {
+    portEditor.isAdding()
+      ? portEditor.stopAdding()
+      : portEditor.startAdding()
+  })</pre
+        >
+
+        <p class="note">
+          其余全自动：缺 <code>pin</code> 端口组时插件补一份默认定义（白点 + magnet）；已有定义优先使用。
+          插件对 @antv/x6 只有类型引用，产物零运行时依赖 —— 你项目里的那份 X6 就是它用的那份。
+        </p>
+        <p class="note">
+          更完整的共存说明（自定义元件形状、已有端子样式、与 Dnd/Selection/History 共存、已知坑）见
+          <code>docs/INTEGRATION.md</code>。
+        </p>
+      </div>
+    </div>
+
+    <script src="../../node_modules/@antv/x6/dist/x6.min.js"></script>
+    <script src="../../dist/index.umd.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>

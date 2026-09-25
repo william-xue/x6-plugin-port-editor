@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>x6-plugin-port-editor · 例子</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 32px;
+        font: 14px/1.8 -apple-system, "PingFang SC", Arial, sans-serif;
+        color: #1f1f1f;
+        background: #fafbfc;
+      }
+      h1 {
+        font-size: 20px;
+        margin: 0 0 6px;
+      }
+      p.lead {
+        color: #666;
+        margin: 0 0 22px;
+      }
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 14px;
+        max-width: 900px;
+      }
+      a.card {
+        display: block;
+        padding: 16px 18px;
+        background: #fff;
+        border: 1px solid #e6e8eb;
+        border-radius: 8px;
+        text-decoration: none;
+        color: inherit;
+      }
+      a.card:hover {
+        border-color: #5f95ff;
+        box-shadow: 0 2px 10px rgba(95, 149, 255, 0.12);
+      }
+      .card b {
+        display: block;
+        font-size: 15px;
+        margin-bottom: 6px;
+        color: #2b5fd9;
+      }
+      .card span {
+        color: #666;
+        font-size: 13px;
+      }
+      pre {
+        background: #fff;
+        border: 1px solid #e6e8eb;
+        border-radius: 6px;
+        padding: 10px 12px;
+        font: 12px/1.7 ui-monospace, SFMono-Regular, Menlo, monospace;
+        max-width: 860px;
+        overflow-x: auto;
+      }
+      code {
+        background: #eef1f5;
+        padding: 1px 5px;
+        border-radius: 3px;
+        font: 12px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>x6-plugin-port-editor · 例子</h1>
+    <p class="lead">
+      两个例子由浅入深，都基于 <code>dist/index.umd.js</code>，无需打包器即可打开。
+      完整说明（接入清单 / 共存 / 已知坑 / 实现原理）见
+      <code>docs/INTEGRATION.md</code> 与 <code>examples/README.md</code>。
+    </p>
+
+    <div class="cards">
+      <a class="card" href="./01-basic/index.html">
+        <b>例 1 · 最小接入</b>
+        <span>
+          已经有一个跑着的 X6 图，怎么把插件接上去：页面左侧列出「你原有的代码」，右侧是「新增的 8 行」，
+          代码与页面一一对应。含：进入添加模式、点轮廓生成引脚、从引脚拉线、悬停删除。
+        </span>
+      </a>
+      <a class="card" href="./02-power-editor/index.html">
+        <b>例 2 · 电力组件场景（完整）</b>
+        <span>
+          自定义元件形状（CT / 主变 / 断路器，<code>Graph.registerNode</code>）、
+          自己命名的端子组与端子样式、调色板拖元件与拖端子、
+          与 Selection / History 共存（端子增删可撤销）、导出 / 导入整图。
+        </span>
+      </a>
+    </div>
+
+    <h1 style="font-size: 15px; margin: 28px 0 6px">本地怎么跑</h1>
+    <pre>cd x6-plugin-port-editor
+npm install          # 会自动构建 dist（prepare 脚本）
+npm run demo         # 起静态服务
+# 然后打开：
+#   http://127.0.0.1:8732/examples/index.html
+#   http://127.0.0.1:8732/examples/01-basic/index.html
+#   http://127.0.0.1:8732/examples/02-power-editor/index.html</pre>
+
+    <p class="lead" style="margin-top: 18px">
+      例子里用到的能力都可以照抄到你自己的项目：换元件形状改 <code>Graph.registerNode</code> 的定义，
+      换端子外观改 <code>TERMINAL_GROUP</code>，端子组名通过 <code>new PortEditor({ group: '你的组名' })</code> 指定。
+    </p>
+  </body>
+</html>

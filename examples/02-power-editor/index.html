@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>例 2 · 电力组件场景：自定义元件 + 已有端子组 + 插件接入</title>
+    <style>
+      body {
+        margin: 0;
+        font: 13px/1.7 -apple-system, "PingFang SC", Arial, sans-serif;
+        color: #1f1f1f;
+      }
+      header {
+        padding: 8px 14px;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      button {
+        font: inherit;
+        padding: 4px 10px;
+        border: 1px solid #5f95ff;
+        background: #fff;
+        color: #2b5fd9;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      button.active {
+        background: #5f95ff;
+        color: #fff;
+      }
+      #hint {
+        color: #666;
+        flex: 1 1 340px;
+        font-size: 12.5px;
+      }
+      #status {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 12px;
+      }
+      #body {
+        display: flex;
+        height: calc(100vh - 96px);
+      }
+      #palette {
+        width: 128px;
+        flex: none;
+        border-right: 1px solid #eee;
+        padding: 8px;
+      }
+      #palette .title,
+      #json-panel .title {
+        color: #888;
+        font-size: 12px;
+        margin-bottom: 5px;
+      }
+      #main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+      }
+      #graph {
+        flex: 1;
+      }
+      #json-panel {
+        height: 150px;
+        border-top: 1px solid #eee;
+        padding: 6px 10px 10px;
+        display: flex;
+        flex-direction: column;
+      }
+      #json {
+        flex: 1;
+        font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 6px;
+        resize: none;
+        white-space: pre;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <button id="btn-add-pin" type="button">添加引脚</button>
+      <button id="btn-undo" type="button">撤销</button>
+      <button id="btn-redo" type="button">重做</button>
+      <button id="btn-clear-pins" type="button">清空引脚</button>
+      <button id="btn-export" type="button">导出 JSON</button>
+      <button id="btn-import" type="button">导入 JSON</button>
+      <span id="hint">
+        加引脚：点「添加引脚」后点元件轮廓，或从左侧拖「端子」到元件上。拉线：从端子拖拽。
+        删端子：悬停端子点「×」。引脚改动可撤销（Ctrl+Z / 撤销按钮）。Esc 退出添加模式。
+      </span>
+      <span id="status">ready</span>
+    </header>
+
+    <div id="body">
+      <div id="palette"><div class="title">元件 / 端子（可拖）</div></div>
+      <div id="main">
+        <div id="graph"></div>
+        <div id="json-panel">
+          <div class="title">
+            图数据（JSON）—— 端子（端口）与"从哪个端子出发"的连线绑定都在里面；导入会整图重建
+          </div>
+          <textarea id="json" spellcheck="false" placeholder="点「导出 JSON」生成；或粘贴 JSON 后点「导入 JSON」"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <script src="../../node_modules/@antv/x6/dist/x6.min.js"></script>
+    <script src="../../dist/index.umd.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
