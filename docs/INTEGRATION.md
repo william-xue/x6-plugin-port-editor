@@ -243,8 +243,8 @@ graph.translate(state.viewport.tx, state.viewport.ty)
 ```bash
 npm install && npm run build
 npm run test:e2e          # 插件的 59 条断言（真实 Chrome：模式守卫、贴轮廓、删引脚、拖拽建引脚、连线样式、导出导入）
-npm run test:examples     # 三个例子的 49 条断言（最小接入 + 难形状 + 电力场景）
-npm test                  # 上面三套一起跑（外加轮廓缺陷门禁，共 127 条）
+npm run test:examples     # 五个例子的 73 条断言（用之前vs之后 / 最小接入 / 难形状 / 接进你自己的数据 / 电力场景）
+npm test                  # 上面三套一起跑（外加轮廓缺陷门禁，共 151 条）
 npm run demo              # http://127.0.0.1:8732/demo/index.html 手工验收（examples/ 也可直接打开）
 ```
 

@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>例 0 · 同一个图：不接插件 vs 接上插件</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font: 13px/1.7 -apple-system, "PingFang SC", Arial, sans-serif;
+        color: #1f1f1f;
+      }
+      header {
+        padding: 10px 14px;
+        border-bottom: 1px solid #eee;
+      }
+      header h1 {
+        font-size: 15px;
+        margin: 0 0 4px;
+      }
+      header p {
+        margin: 0;
+        color: #666;
+      }
+      #panes {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        height: calc(100vh - 214px);
+        min-height: 380px;
+      }
+      .pane {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+      }
+      .pane + .pane {
+        border-left: 1px solid #eee;
+      }
+      .pane > .bar {
+        padding: 8px 12px;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        background: #fcfcfd;
+      }
+      .pane > .bar b {
+        font-size: 13px;
+      }
+      .pane.bare > .bar b {
+        color: #b45309;
+      }
+      .pane.with > .bar b {
+        color: #1677ff;
+      }
+      .pane .graph {
+        flex: 1;
+        min-height: 0;
+      }
+      .pane .stat {
+        padding: 6px 12px;
+        border-top: 1px solid #eee;
+        font: 12px/1.8 ui-monospace, SFMono-Regular, Menlo, monospace;
+        color: #333;
+        background: #fafbfc;
+        min-height: 64px;
+      }
+      button {
+        font: inherit;
+        padding: 4px 10px;
+        border: 1px solid #5f95ff;
+        background: #fff;
+        color: #2b5fd9;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      button.active {
+        background: #5f95ff;
+        color: #fff;
+      }
+      button.ghost {
+        border-color: #cbd5e1;
+        color: #475569;
+      }
+      .off {
+        color: #d4380d;
+      }
+      .on {
+        color: #1677ff;
+      }
+      footer {
+        padding: 12px 14px 18px;
+        border-top: 1px solid #eee;
+      }
+      footer h2 {
+        font-size: 13px;
+        margin: 0 0 8px;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        max-width: 1000px;
+        background: #fff;
+        border: 1px solid #e6e8eb;
+        border-radius: 6px;
+        font-size: 12.5px;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 6px 10px;
+        border-bottom: 1px solid #eef1f5;
+        vertical-align: top;
+      }
+      th {
+        background: #f7f8fa;
+        color: #666;
+        font-weight: 500;
+      }
+      code {
+        background: #eef1f5;
+        padding: 1px 4px;
+        border-radius: 3px;
+        font: 11.5px/1.6 ui-monospace, Menlo, monospace;
+      }
+      .tip {
+        margin: 10px 0 0;
+        color: #8a6d3b;
+        background: #fff8e6;
+        border: 1px solid #f0e0b8;
+        border-radius: 6px;
+        padding: 8px 10px;
+        max-width: 1000px;
+        font-size: 12.5px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>例 0 · 同一个图：不接插件 vs 接上插件</h1>
+      <p>
+        左右两边是<b>同一批元件</b>（圆的 CT、六边形主变、圆角矩形断路器）。差别只有一个：右边 <code>graph.use(portEditor)</code>。
+        两边都能加端子 —— 区别是<b>你得付出多少</b>。
+      </p>
+    </header>
+
+    <div id="panes">
+      <section class="pane bare">
+        <div class="bar">
+          <b>左：不接插件（X6 原生）</b>
+          <button id="left-guess" type="button">手写坐标（估一个）</button>
+          <button id="left-exact" type="button" class="ghost">手写坐标（算准了）</button>
+          <button id="left-clear" type="button" class="ghost">清空</button>
+        </div>
+        <div class="graph" id="graph-left"></div>
+        <div class="stat" id="stat-left">ready</div>
+      </section>
+
+      <section class="pane with">
+        <div class="bar">
+          <b>右：接上插件</b>
+          <button id="right-add" type="button">添加引脚</button>
+          <button id="right-clear" type="button" class="ghost">清空全部引脚</button>
+        </div>
+        <div class="graph" id="graph-right"></div>
+        <div class="stat" id="stat-right">ready</div>
+      </section>
+    </div>
+
+    <footer>
+      <h2>差在哪</h2>
+      <table>
+        <thead>
+          <tr><th>要端子就得…</th><th>不接插件（X6 原生）</th><th>接上插件</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>端子从哪来</td>
+            <td>在元件定义里预先声明 <code>ports.items</code>，或运行时 <code>node.addPort({ args: { x, y } })</code> —— <b>坐标由你算</b></td>
+            <td>点一下轮廓就地生成，坐标由 CTM 链换算写在 <code>ports.items[].args</code></td>
+          </tr>
+          <tr>
+            <td>异形元件（圆 / 多边形 / 自定义 path）</td>
+            <td>自己按几何算：圆心半径、顶点表、贝塞尔采样……；元件 <b>resize / rotate</b> 之后还要重算</td>
+            <td>投影到元件<b>真实 SVG 轮廓</b>，缩放 / 平移 / 旋转都不用特判</td>
+          </tr>
+          <tr>
+            <td>鼠标移到轮廓上</td>
+            <td>没有反馈。X6 核心<b>从不绑定原生 <code>mousemove</code></b>，<code>node:mousemove</code> 只在拖拽过程中触发</td>
+            <td>出现落点预览（就是将要生成的端子位置）</td>
+          </tr>
+          <tr>
+            <td>删端子</td>
+            <td>自己做 UI（右键菜单 / 选中后按 Delete / 侧栏列表）</td>
+            <td>悬停引脚 → 点「×」；连在它上面的线一并删掉，且是<b>一步撤销</b></td>
+          </tr>
+          <tr>
+            <td>从端子拉线</td>
+            <td>X6 原生能力：<code>magnet: true</code> 的端子本来就能起线</td>
+            <td><b>一样</b>（插件不改这条语义，进添加模式时也照常放行）</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="tip">
+        左边两个「手写坐标」按钮演示的就是<b>真实的手工成本</b>：「估一个」把端子放在元件框的角上（离真实轮廓有一段距离，下面那行数字会告诉你多远）；
+        「算准了」把圆心半径算出来放对位置 —— <b>能做到，但每次换形状、每次 resize 都得重来一遍</b>。右边你只需要点一下轮廓。
+      </p>
+    </footer>
+
+    <!-- 依赖来自 examples/ 自己的 node_modules（npm install 时从 GitHub 装进来），
+         不是仓库自带的 dist/ —— 例子演示的就是"别人项目里长什么样" -->
+    <script src="../node_modules/@antv/x6/dist/x6.min.js"></script>
+    <script src="../node_modules/x6-plugin-port-editor/dist/index.umd.js"></script>
+    <script src="../_shared/require-plugin.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>

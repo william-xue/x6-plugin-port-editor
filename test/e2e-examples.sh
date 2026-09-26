@@ -65,6 +65,61 @@ trap 'kill $SERVER 2>/dev/null; playwright-cli close >/dev/null 2>&1 || true' EX
 sleep 1
 BASE="http://127.0.0.1:${PORT}/examples"
 
+# ══════════════════════════ 例 0 · 不接插件 vs 接上插件 ══════════════════════════
+# 这一节回答"我自己也能写坐标，为什么要用它"。左边不接插件（手写坐标），右边接上插件。
+# 数字（端子离真实轮廓多少 px）两边用同一个量法，所以可比。
+echo "--- 例 0 · 00-before-after ---"
+playwright-cli open --browser=chrome "$BASE/00-before-after/index.html" >/dev/null
+sleep 1.2
+
+check "E0 页面加载" "true" "$(ev 'String(!!window.__ex)')"
+check "E0 左边确实没接插件" "true" "$(ev 'String(window.__ex.plugins.left === null)')"
+check "E0 左右各 3 个元件" "3/3" "$(ev 'window.__ex.graphs.left.getNodes().length + "/" + window.__ex.graphs.right.getNodes().length')"
+
+# 手工路①：估一个坐标 → 端子落在元件框角上，离真实轮廓有一段距离
+playwright-cli click "#left-guess" >/dev/null
+sleep 0.25
+check "E0 左边「估一个」生成了端子" "1" "$(ev "String(window.__ex.totalPortCount('left'))")"
+check "E0 左边「估一个」落点离轮廓 > 10px（量化手工成本）" "true" "$(ev "String(window.__ex.distanceToOutline('left','n-ct','T-1') > 10)")"
+
+# 手工路②：把圆心半径算出来 → 能落准，但每次换形状 / resize 都得重算
+playwright-cli click "#left-clear" >/dev/null
+sleep 0.2
+playwright-cli click "#left-exact" >/dev/null
+sleep 0.25
+check "E0 左边「算准了」能落在轮廓上（≤0.5px）" "true" "$(ev "String(window.__ex.distanceToOutline('left','n-ct','T-1') <= 0.5)")"
+
+# 左边用真实鼠标点轮廓：X6 原生没有这套交互，端子数不该变
+LEFT_BEFORE="$(ev "String(window.__ex.totalPortCount('left'))")"
+LEFT_PT="$(ev "(() => { const p = window.__ex.outlinePoint('left','n-transformer',0.25); return Math.round(p.client.x) + ' ' + Math.round(p.client.y); })()")"
+read -r L0X L0Y <<EOF
+$LEFT_PT
+EOF
+playwright-cli mousemove "$L0X" "$L0Y" >/dev/null
+sleep 0.2
+playwright-cli mousedown >/dev/null
+playwright-cli mouseup >/dev/null
+sleep 0.25
+check "E0 左边点轮廓毫无反应（端子数不变）" "$LEFT_BEFORE" "$(ev "String(window.__ex.totalPortCount('left'))")"
+
+# 右边同一批元件 + 插件：点一下就生成，且落在真实轮廓上
+RIGHT_PT="$(ev "(() => { const p = window.__ex.outlinePoint('right','n-transformer',0.25); return Math.round(p.client.x) + ' ' + Math.round(p.client.y); })()")"
+read -r R0X R0Y <<EOF
+$RIGHT_PT
+EOF
+playwright-cli click "#right-add" >/dev/null
+sleep 0.25
+playwright-cli mousemove "$R0X" "$R0Y" >/dev/null
+sleep 0.25
+check "E0 右边悬停出现落点预览" "block" "$(ev 'document.querySelector(".x6-pe-preview").style.display')"
+playwright-cli mousedown >/dev/null
+playwright-cli mouseup >/dev/null
+sleep 0.25
+check "E0 右边点轮廓生成了引脚" "1" "$(ev "String(window.__ex.totalPortCount('right'))")"
+check "E0 右边落点在真实轮廓上（≤0.5px）" "true" "$(ev "String(window.__ex.distanceToOutline('right','n-transformer','T-1') <= 0.5)")"
+playwright-cli press Escape >/dev/null
+check "E0 无页面报错" "0" "$(ev 'String((window.__errors || []).length)')"
+
 # ══════════════════════════ 例 1 · 最小接入 ══════════════════════════
 echo "--- 例 1 · 01-basic ---"
 playwright-cli open --browser=chrome "$BASE/01-basic/index.html" >/dev/null
@@ -272,6 +327,50 @@ check "E3 ② 落点真的在轮廓上（≤2px）" "true" "$(ev "
 })()")"
 playwright-cli press Escape >/dev/null
 check "E3 无页面报错" "0" "$(ev 'String((window.__errors || []).length)')"
+
+# ══════════════════════════ 例 4 · 端子接进你自己的数据 ══════════════════════════
+# 这一节证明"端子是数据"这件事是能落到业务层的：加端子 → 采成自己的结构 → 用那份数据重建回来。
+echo "--- 例 4 · 04-host-state ---"
+playwright-cli open --browser=chrome "$BASE/04-host-state/index.html" >/dev/null
+sleep 1.2
+
+check "E4 页面加载" "true" "$(ev 'String(!!window.__ex)')"
+check "E4 初始 3 个元件 0 个端子" "3/0" "$(ev 'window.__ex.nodeCount() + "/" + window.__ex.pinCount()')"
+check "E4 初始面板里 pins 是空的" "0" "$(ev 'String(window.__ex.myState().pins.length)')"
+
+# 真实鼠标加一个端子：面板（你自己的数据结构）必须跟着变 —— 这证明 node:change:ports 通了
+E4_PT="$(ev "(() => { const p = window.__ex.outlinePoint('n-transformer', 0.25); return Math.round(p.client.x) + ' ' + Math.round(p.client.y); })()")"
+read -r E4X E4Y <<EOF
+$E4_PT
+EOF
+playwright-cli click "#btn-add" >/dev/null
+sleep 0.25
+playwright-cli mousemove "$E4X" "$E4Y" >/dev/null
+sleep 0.25
+playwright-cli mousedown >/dev/null
+playwright-cli mouseup >/dev/null
+sleep 0.3
+check "E4 真实鼠标点上轮廓 → 端子数 1" "1" "$(ev 'String(window.__ex.pinCount())')"
+check "E4 你自己的数据里同步出现该端子" "1" "$(ev 'String(window.__ex.myState().pins.length)')"
+check "E4 端子 id 是 T-1 而不是 T--1" "T-1" "$(ev 'String(window.__ex.myState().pins[0].id)')"
+check "E4 采到的坐标是节点本地坐标（落在轮廓上）" "true" "$(ev 'String(Math.abs(window.__ex.myState().pins[0].x - 137.7) < 3 && Math.abs(window.__ex.myState().pins[0].y - 26.6) < 3)')"
+playwright-cli press Escape >/dev/null
+
+# 用"你自己的数据"重建整图：端子编号与坐标都要活下来
+# 断言方式：重建**前后**的这份数据逐位相同（不写死数值 —— 点击坐标每次会差 1px）
+E4_BEFORE="$(ev 'JSON.stringify(window.__ex.myState().pins)')"
+playwright-cli click "#btn-rebuild" >/dev/null
+sleep 0.4
+check "E4 从数据重建后仍 3 个元件" "3" "$(ev 'String(window.__ex.nodeCount())')"
+check "E4 从数据重建后端子还在" "1" "$(ev 'String(window.__ex.pinCount())')"
+check "E4 重建前后端子数据逐位一致" "$E4_BEFORE" "$(ev 'JSON.stringify(window.__ex.myState().pins)')"
+
+# 载入一份"后端给的"数据
+playwright-cli click "#btn-load" >/dev/null
+sleep 0.4
+check "E4 载入示例数据 → 3 个端子" "3" "$(ev 'String(window.__ex.pinCount())')"
+check "E4 载入的端子编号保持 T-1/T-2/T-3" "T-1,T-2,T-3" "$(ev 'window.__ex.myState().pins.map((p) => p.id).join(",")')"
+check "E4 无页面报错" "0" "$(ev 'String((window.__errors || []).length)')"
 
 echo
 echo "=== summary: ${PASS} passed, ${FAIL} failed ==="

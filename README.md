@@ -7,9 +7,10 @@ AntV X6 的**交互式引脚（pin / port）编辑器**插件：点一下工具�
 > 已知坑速查表、以及插件依赖的 X6 公开 API 清单（升级 X6 后自查用）。
 >
 > **想看跑起来的代码？直接看 [`examples/index.html`](examples/index.html)** ——
-> 一页讲清「它替你解决什么问题 + 四种引用方式」，然后：
+> 例子是一个**独立消费方项目**（插件从 GitHub 装，不是仓库自带构建），一页讲清「它替你解决什么问题 + 四种引用方式」，然后：
+> **例 0 用之前 vs 用之后**（同一批元件左右各一份，用数字量出差别：手工估坐标离真实轮廓 21.9 px，插件落点 0 px）、
 > **例 1** 最小接入（原有代码 / 新增 8 行并排对照）、
-> **例 3 难形状**（直边 / 带孔洞 / 矩形+双圆 / 同心圆环 / 开放折线，右侧列出插件实际读到了几条轮廓，附「轮廓可视化」）、
+> **例 3 难形状**（直边 / 带孔洞 / 矩形+双圆 / 同心圆环 / 开放折线，右侧列出插件实际读到了几条轮廓）、
 > **例 2** 电力组件场景（自定义元件形状 + 自己的端子组 + 选中态穿透 + History 一步撤销 + 调色板拖拽 + 导出导入），
 > 并附**实现原理逐步讲解**。
 
@@ -20,7 +21,7 @@ AntV X6 的**交互式引脚（pin / port）编辑器**插件：点一下工具�
   （难形状见 `examples/03-hard-shapes/`，每类都有常驻断言）
 - 两种入口：**点一下加引脚**（编辑模式）与**从调色板拖一个引脚到元件上**（Dnd）
 - 图可导出为 JSON 再原样复原（含引脚与"从哪个引脚出发"的连线绑定）
-- 版本：v0.1.0 ｜ 已在 @antv/x6 **3.1.8** + 真实 Chrome 上通过端到端断言（轮廓缺陷门禁 19 + 插件 59 + 例子 49，见 `test/EVIDENCE.md` 与 `npm test`）
+- 版本：v0.1.0 ｜ 已在 @antv/x6 **3.1.8** + 真实 Chrome 上通过端到端断言（轮廓缺陷门禁 19 + 插件 59 + 例子 73，共 **151** 条，见 `test/EVIDENCE.md` 与 `npm test`）
 - 上游形态：同一份实现已按官方插件形态提交到主仓 —— **antvis/X6#5093**
   （`src/plugin/port-editor/` + `site/docs/tutorial/plugins/port-editor.{zh,en}.md` + 20 条 jsdom 单测；本仓是被上游接受前的可用形态，两者并行维护）
 - **唯一对外入口是 GitHub**（本仓不发 npm）：`npm install github:william-xue/x6-plugin-port-editor`
@@ -82,8 +83,12 @@ import { PortEditor } from 'x6-plugin-port-editor'
 > **本仓库不发 npm**，A–D 就是全部引用方式（A 已实测：装完 `dist/` 里 mjs/cjs/umd/d.ts 齐全，`import` 正常）。
 > peerDependency：`@antv/x6 >= 3.0.0`（开发时实测 3.1.8）。
 
-想先看效果再装？打开 `examples/index.html` —— 一页讲清"它替你解决什么问题 + 四种引用方式"，
-`examples/03-hard-shapes/` 把最难的五种形状摆在一起，右侧直接列出插件读到了几条轮廓。
+想先看效果再装？打开 `examples/index.html`（先 `npm run examples:install` 装一次例子的依赖）。
+
+> **`examples/` 就是"你的项目"的样子**：它有自己的 `package.json`，依赖写成
+> `github:william-xue/x6-plugin-port-editor#v0.1.0`，`npm install` 时**从 GitHub 真的装一遍**
+> （npm 会 clone 并自动跑插件的 `prepare` 构建出 `dist/`），页面加载的是装进来的那份产物。
+> `npm run examples:install` 一步搞定；没装就打开页面会被挡住并直接告诉你敲什么命令。
 
 ### 2.1 只在自己项目里用、不发 npm —— 四种方式（均已实测）
 

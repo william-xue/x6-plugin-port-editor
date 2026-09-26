@@ -27,6 +27,7 @@
     "prepare": "node build.mjs",
     "types": "tsc -p tsconfig.json",
     "demo": "node scripts/serve.mjs",
+    "examples:install": "npm --prefix examples install",
     "test": "bash test/outline-defects.sh && bash test/e2e.sh && bash test/e2e-examples.sh",
     "test:outline": "bash test/outline-defects.sh",
     "test:measure": "bash test/measure-outline.sh",

@@ -185,26 +185,47 @@ import { PortEditor } from './vendor/port-editor/index'</pre>
     </p>
 
     <h2>例子（都在本仓库里，打开就能跑）</h2>
+    <p class="lead">
+      <code>examples/</code> 是一个<b>独立的消费方项目</b>：它自己 <code>npm install</code>，
+      插件依赖直接从 GitHub 装进来（不是仓库里那份构建产物）—— 所以你看到的就是<b>你自己项目里会长成什么样</b>。
+    </p>
     <div class="cards">
+      <a class="card" href="./00-before-after/index.html">
+        <b>例 0 · 不接插件 vs 接上插件（先看这个）</b>
+        <span>
+          左右两边是<b>同一批元件</b>（圆 CT / 六边形主变 / 圆角矩形断路器），差别只有一行
+          <code>graph.use(portEditor)</code>。左边演示手工成本并量出数字（估一个坐标 → 离真实轮廓
+          <b>21.9 px</b>；算准了 → 0 px，但每次换形状、每次 resize 都要重算），右边点一下轮廓就落在轮廓上。
+          点轮廓在左边是<b>没有任何反应</b>的。
+        </span>
+      </a>
       <a class="card" href="./01-basic/index.html">
-        <b>例 1 · 最小接入</b>
+        <b>例 1 · 最小接入（最简单）</b>
         <span>
           已经有一个跑着的 X6 图，怎么把插件接上去：左侧列出「你原有的代码」与「新增的 8 行」，
           代码与页面行为一一对应。含加引脚 / 从引脚拉线 / 悬停删除全链路。
         </span>
       </a>
       <a class="card" href="./03-hard-shapes/index.html">
-        <b>例 3 · 难形状（推荐先看这个）</b>
+        <b>例 3 · 难形状：能处理哪些轮廓</b>
         <span>
-          五种最容易"贴不上"的形状摆在一起：直边、带孔洞、矩形+双圆、同心圆环、开放折线。
-          右侧列出插件<b>实际读到了几条轮廓</b>，「轮廓可视化」把同一结果画到画布上。
+          五种最容易"贴不上"的形状：直边 <code>&lt;line&gt;</code>、带孔洞的 <code>&lt;path&gt;</code>、
+          矩形+双圆（变压器）、同心圆环、开放折线。右侧列出插件<b>实际读到了几条轮廓</b>，
+          「轮廓可视化」把同一结果画到画布上。
+        </span>
+      </a>
+      <a class="card" href="./04-host-state/index.html">
+        <b>例 4 · 端子接进你自己的数据</b>
+        <span>
+          接进真实项目最容易卡住的不是"怎么加引脚"，而是"<b>加完之后我的业务数据怎么办</b>"。
+          这一页给完整闭环：端子增删 → 采成你自己的结构（右侧面板实时变）→ 清空 → 用那份数据重建回来。
         </span>
       </a>
       <a class="card" href="./02-power-editor/index.html">
-        <b>例 2 · 电力组件场景（完整）</b>
+        <b>例 2 · 电力组件场景（最完整）</b>
         <span>
-          自定义元件形状（CT / 主变 / 断路器）、项目自己的端子组与样式、调色板拖元件与拖端子、
-          与 Selection / History 共存（端子增删可撤销）、导出 / 导入整图。
+          自定义元件形状、项目自己的端子组与样式（<code>T-1</code> 编号）、调色板拖元件与拖端子、
+          与 Selection / History 共存（端子增删<b>一步撤销</b>）、导出 / 导入整图。
         </span>
       </a>
       <a class="card" href="../demo/index.html">
@@ -219,12 +240,22 @@ import { PortEditor } from './vendor/port-editor/index'</pre>
     <h2>本地怎么跑</h2>
     <pre>git clone https://github.com/william-xue/x6-plugin-port-editor.git
 cd x6-plugin-port-editor
-npm install          # 会自动构建 dist（prepare 脚本）
-npm run demo         # 起静态服务（端口 8732）
+
+# 例子是独立项目：装一次依赖（插件从 GitHub 装进来）
+cd examples &amp;&amp; npm install &amp;&amp; cd ..
+
+npm run demo         # 起静态服务（零依赖，端口 8732）
 # 然后打开：
 #   http://127.0.0.1:8732/examples/index.html          （本页）
+#   http://127.0.0.1:8732/examples/00-before-after/     （用之前 vs 用之后）
 #   http://127.0.0.1:8732/examples/03-hard-shapes/      （难形状）
-npm test             # 127 条断言：轮廓缺陷门禁 19 + 插件 e2e 59 + 例子 e2e 49</pre>
+#   http://127.0.0.1:8732/examples/04-host-state/       （接你自己的数据）
+npm test             # 断言：轮廓缺陷门禁 + 插件 e2e + 例子 e2e（真实 Chrome）</pre>
+
+    <p class="lead">
+      没装 <code>examples/node_modules</code> 就打开页面？页面会直接告诉你去敲哪条命令（不会白屏）。
+      <code>demo/</code> 那个页面走的是仓库自带的 <code>dist/</code>，用于开发本插件时的自测。
+    </p>
 
     <h2>已知边界（诚实写在这里）</h2>
     <table>

@@ -12,7 +12,7 @@
 | 源码对照版本 | antvis/X6 master **v3.1.7**（本地克隆 b14ca27） |
 | 浏览器 | 真实 Google Chrome（playwright-cli --browser=chrome，非 jsdom） |
 | 事件来源 | Playwright 真实鼠标/键盘事件（mousemove / mousedown / mouseup / press Escape / select），非页面内 dispatchEvent |
-| 断言总数 | **127**（轮廓缺陷门禁 19 + 插件 59 + 例子 49） |
+| 断言总数 | **151**（轮廓缺陷门禁 19 + 插件 59 + 例子 73） |
 
 ## 2. 插件端到端断言（`npm run test:e2e`，59 条）
 
@@ -84,10 +84,22 @@ PASS  S16 no page errors                                   0
 生成引脚 args 精度、模式内从引脚拉线、退出后逐项还原、点轮廓加引脚、拖拽建引脚（调色板）、
 连线样式预设、导出/导入**逐字节往返**。
 
-## 3. 例子端到端断言（`npm run test:examples`，49 条）
+## 3. 例子端到端断言（`npm run test:examples`，73 条）
 
 ```
 === examples e2e (port 8755) ===
+--- 例 0 · 00-before-after ---
+PASS  E0 页面加载                                      true
+PASS  E0 左边确实没接插件                              true
+PASS  E0 左右各 3 个元件                               3/3
+PASS  E0 左边「估一个」生成了端子                      1
+PASS  E0 左边「估一个」落点离轮廓 > 10px（量化手工成本） true
+PASS  E0 左边「算准了」能落在轮廓上（≤0.5px）          true
+PASS  E0 左边点轮廓毫无反应（端子数不变）              1
+PASS  E0 右边悬停出现落点预览                          block
+PASS  E0 右边点轮廓生成了引脚                          1
+PASS  E0 右边落点在真实轮廓上（≤0.5px）                true
+PASS  E0 无页面报错                                    0
 --- 例 1 · 01-basic ---
 PASS  E1 页面就绪                                      true
 PASS  E1 初始 3 元件 / 0 连线                        3/0
@@ -140,15 +152,32 @@ PASS  E3 ① 引脚落在直边中点 (100,60)             100,60
 PASS  E3 ② 带孔洞元件生成了引脚                1
 PASS  E3 ② 落点真的在轮廓上（≤2px）          true
 PASS  E3 无页面报错                                   0
-=== summary: 49 passed, 0 failed ===
+--- 例 4 · 04-host-state ---
+PASS  E4 页面加载                                      true
+PASS  E4 初始 3 个元件 0 个端子                    3/0
+PASS  E4 初始面板里 pins 是空的                    0
+PASS  E4 真实鼠标点上轮廓 → 端子数 1          1
+PASS  E4 你自己的数据里同步出现该端子        1
+PASS  E4 端子 id 是 T-1 而不是 T--1                  T-1
+PASS  E4 采到的坐标是节点本地坐标（落在轮廓上） true
+PASS  E4 从数据重建后仍 3 个元件                 3
+PASS  E4 从数据重建后端子还在                    1
+PASS  E4 重建前后端子数据逐位一致                [{"nodeId":"n-transformer","id":"T-1","x":137.73,"y":26.59}]
+PASS  E4 载入示例数据 → 3 个端子                 3
+PASS  E4 载入的端子编号保持 T-1/T-2/T-3           T-1,T-2,T-3
+PASS  E4 无页面报错                                   0
+=== summary: 73 passed, 0 failed ===
 ```
 
-覆盖：例 1 最小接入全链路（预览/生成/贴轮廓/退出/拉线/非模式不误加）；
+覆盖：例 0 用之前 vs 用之后（左边手写坐标两条路各自的落点误差、左边点轮廓无反应、右边落点在轮廓上）；
+例 1 最小接入全链路（预览/生成/贴轮廓/退出/拉线/非模式不误加）；
 例 2 电力场景（自定义元件形状生效、项目自己的 `terminal` 组与 `T-` 前缀、
 **选中元件后被选择框覆盖的轮廓仍可加端子**（`elementsFromPoint` 穿透）、
 从端子拉线、**History 一步撤销/重做**、调色板拖端子模板不落地、导出导入一致）；
 例 3 难形状（五类形状各自读到的轮廓条数与标签、轮廓可视化叠加层元素数、
-**真实鼠标在直边上加引脚且落在直边中点 (100,60)**、带孔洞元件落点离真实轮廓 ≤2px）。
+**真实鼠标在直边上加引脚且落在直边中点 (100,60)**、带孔洞元件落点离真实轮廓 ≤2px）；
+例 4 接进你自己的数据（真实鼠标加端子 → **你自己的数据结构里同步出现**（证明 `node:change:ports` 通了）、
+端子 id 是 `T-1` 而不是 `T--1`、重建前后数据**逐位一致**、载入后端数据后编号保持 T-1/T-2/T-3）。
 
 ## 4. 包形态冒烟
 
@@ -170,7 +199,7 @@ exports: PortEditor, collectOutlineElements, findNearestOutlinePoint
 cd x6-plugin-port-editor
 npm install
 npm run build
-npm test              # 127 条断言：轮廓缺陷门禁 19 + 插件 59 + 例子 49
+npm test              # 151 条断言：轮廓缺陷门禁 19 + 插件 59 + 例子 73
 npm run test:outline  # 只跑轮廓缺陷门禁
 npm run test:measure  # 轮廓缺陷测量报告（只打印数字，不判红绿）
 npm run demo          # http://127.0.0.1:8732/demo/index.html （examples/ 也可以直接打开）

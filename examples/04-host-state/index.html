@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>例 4 · 端子接进你自己的数据</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font: 13px/1.7 -apple-system, "PingFang SC", Arial, sans-serif;
+        color: #1f1f1f;
+      }
+      header {
+        padding: 10px 14px;
+        border-bottom: 1px solid #eee;
+      }
+      header h1 {
+        font-size: 15px;
+        margin: 0 0 4px;
+      }
+      header p {
+        margin: 0;
+        color: #666;
+      }
+      #wrap {
+        display: flex;
+        height: calc(100vh - 118px);
+      }
+      #graph {
+        flex: 1;
+        min-width: 0;
+      }
+      #panel {
+        width: 420px;
+        flex: none;
+        border-left: 1px solid #eee;
+        padding: 10px 14px;
+        display: flex;
+        flex-direction: column;
+        background: #fafbfc;
+      }
+      #panel .bar {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 8px;
+      }
+      #panel h3 {
+        margin: 6px 0 4px;
+        font-size: 13px;
+      }
+      #panel .note {
+        color: #666;
+        font-size: 12px;
+        margin: 0 0 8px;
+      }
+      #state {
+        flex: 1;
+        margin: 0;
+        border: 1px solid #e6e8eb;
+        border-radius: 6px;
+        background: #0f172a;
+        color: #d7e0f4;
+        padding: 10px 12px;
+        font: 11.5px/1.7 ui-monospace, SFMono-Regular, Menlo, monospace;
+        overflow: auto;
+        white-space: pre;
+      }
+      button {
+        font: inherit;
+        padding: 4px 10px;
+        border: 1px solid #5f95ff;
+        background: #fff;
+        color: #2b5fd9;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      button.active {
+        background: #5f95ff;
+        color: #fff;
+      }
+      button.ghost {
+        border-color: #cbd5e1;
+        color: #475569;
+      }
+      code {
+        background: #eef1f5;
+        padding: 1px 4px;
+        border-radius: 3px;
+        font: 11.5px/1.6 ui-monospace, Menlo, monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>例 4 · 端子接进你自己的数据</h1>
+      <p>
+        端子（引脚）在 X6 里本来就是<b>数据</b>：<code>node.ports.items[]</code>。
+        所以它能被监听、被序列化成<b>你自己的数据结构</b>、再反着重建回来。
+        右边那块就是你自己的状态 —— 在图上加 / 删端子，它立刻跟着变。
+      </p>
+    </header>
+    <div id="wrap">
+      <div id="graph"></div>
+      <div id="panel">
+        <div class="bar">
+          <button id="btn-add" type="button">添加端子</button>
+          <button id="btn-rebuild" type="button" class="ghost">从数据重建图</button>
+          <button id="btn-load" type="button" class="ghost">载入一份示例数据</button>
+        </div>
+        <h3>你自己的数据（实时）</h3>
+        <p class="note">
+          只留了业务用得上的字段：元件 id、名字、端子编号与<b>节点本地坐标</b>。
+          这一份就是 <code>graph.on('node:change:ports')</code> 触发时重新采出来的。
+        </p>
+        <pre id="state">{}</pre>
+      </div>
+    </div>
+
+    <!-- 依赖来自 examples/ 自己的 node_modules（npm install 时从 GitHub 装进来），
+         不是仓库自带的 dist/ —— 例子演示的就是"别人项目里长什么样" -->
+    <script src="../node_modules/@antv/x6/dist/x6.min.js"></script>
+    <script src="../node_modules/x6-plugin-port-editor/dist/index.umd.js"></script>
+    <script src="../_shared/require-plugin.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "name": "x6-plugin-port-editor-examples",
+  "private": true,
+  "version": "0.1.0",
+  "description": "例子：像一个真实项目那样使用 x6-plugin-port-editor —— 依赖直接从 GitHub 装，不是仓库自带的构建产物。",
+  "scripts": {
+    "install:plugin": "npm install",
+    "demo": "node ../scripts/serve.mjs"
+  },
+  "dependencies": {
+    "@antv/x6": "^3.1.8",
+    "x6-plugin-port-editor": "github:william-xue/x6-plugin-port-editor#v0.1.0"
+  }
+}
