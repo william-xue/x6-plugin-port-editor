@@ -74,6 +74,88 @@ export function collectOutlineElements(
 /** 相邻两个采样点离得比"正常间隔"远这么多倍，就认为中间有断口（子路径交界）。 */
 const GAP_FACTOR = 1.8
 
+/** 两段之间的夹角超过这个度数，才认为中间夹着的是拐角而不是曲线。 */
+const CORNER_MIN_ANGLE_DEG = 20
+
+/**
+ * 拐角取精确点。
+ *
+ * 采样是均匀的：每隔 step 问一次"沿曲线走到这儿在哪"。拐角**不会正好落在采样点上**，
+ * 于是折线从拐角内侧抄近路 —— 削掉的深度最大约 步长/2。实测（真实 X6，节点本地坐标）：
+ *
+ *   一个 590×200 的矩形，周长 1580、步长 1580/240 ≈ 6.58，四个拐角里
+ *   有两个正好落在采样点上（偏 0.00），另外两个没有（偏 **2.13**）——
+ *   已经超过本仓 e2e 自己用的 2px 容差。周长越长步长越大，削得越狠
+ *   （周长 4000 的元件按 步长/2 推算会削掉约 8）。
+ *
+ * 判据盯"桥接段"，不盯顶点：正常边 → **与前后两段都不平行的一段** → 正常边。
+ * 中间那段就是抄近路的桥接段，把它的两个端点换成两侧边延长线的交点。
+ *   · 光滑曲线每段只和前后差几度 → 不会被误判
+ *   · 采样点正好落在拐角上（本来就没削角）→ "后一段与再后一段平行" → 也不动它
+ * 首点与末点原样保留，不破坏任何"首尾重合"的判断。
+ */
+function snapCorners(points: Point[], step: number): Point[] {
+  if (points.length < 4) return points.slice()
+  const parallelEnough = Math.cos((CORNER_MIN_ANGLE_DEG * Math.PI) / 180)
+  // 交点离采样点多远还算"同一个拐角"。真实拐角就在桥接段旁边（距离 ≤ 步长），
+  // 所以 1.5 倍步长足够宽松，又不会被病态求交骗到。
+  const maxOffset = step * 1.5
+
+  // 每一段的单位方向：segment[k] = points[k] → points[k+1]
+  const segments: Array<Point | null> = []
+  for (let k = 0; k < points.length - 1; k += 1) {
+    const dx = points[k + 1].x - points[k].x
+    const dy = points[k + 1].y - points[k].y
+    const length = Math.hypot(dx, dy)
+    segments.push(length < 1e-9 ? null : { x: dx / length, y: dy / length })
+  }
+
+  const replacements = new Map<number, Point>()
+  for (let k = 1; k < segments.length - 1; k += 1) {
+    // 相邻两段都已经是桥接段了：这个形状比步长还细碎，交给原始采样更稳
+    if (replacements.has(k - 1) || replacements.has(k + 1)) continue
+    const previous = segments[k - 1]
+    const bridge = segments[k]
+    const next = segments[k + 1]
+    if (!previous || !bridge || !next) continue
+
+    // 桥接段必须和**前后两段都不平行**；正常边只会和一侧不平行
+    if (previous.x * bridge.x + previous.y * bridge.y > parallelEnough) continue
+    if (bridge.x * next.x + bridge.y * next.y > parallelEnough) continue
+
+    const cross = previous.x * next.y - previous.y * next.x
+    if (Math.abs(cross) < 1e-6) continue // 前后两条边本来就平行 ⟹ 这里不是拐角
+
+    const wx = points[k + 1].x - points[k].x
+    const wy = points[k + 1].y - points[k].y
+    const t = (wx * next.y - wy * next.x) / cross
+    const corner = { x: points[k].x + t * previous.x, y: points[k].y + t * previous.y }
+    if (!Number.isFinite(corner.x) || !Number.isFinite(corner.y)) continue
+    if (Math.hypot(corner.x - points[k].x, corner.y - points[k].y) > maxOffset) continue
+
+    replacements.set(k, corner)
+  }
+
+  if (replacements.size === 0) return points.slice()
+
+  // 桥接段的两端都丢掉，换成一个精确拐角插在原来的位置上。
+  // 逐个下标判断（不能用"跳过两个"的写法）：桥接段正好落在末尾时末点也必须照常输出。
+  const dropped = new Set<number>()
+  replacements.forEach((_corner, k) => {
+    dropped.add(k)
+    dropped.add(k + 1)
+  })
+
+  const out: Point[] = []
+  for (let i = 0; i < points.length; i += 1) {
+    const corner = replacements.get(i)
+    if (corner) out.push(corner)
+    if (dropped.has(i)) continue
+    out.push(points[i])
+  }
+  return out
+}
+
 function getSampler(el: SVGGeometryElement, sampleCount: number): Sampler {
   let length = 0
   try {
@@ -96,7 +178,11 @@ function getSampler(el: SVGGeometryElement, sampleCount: number): Sampler {
       const p = el.getPointAtLength((length * i) / count)
       samples.push({ x: p.x, y: p.y })
     }
-    runs = splitRuns(samples, length / count)
+    const step = length / count
+    // 先把拐角换成精确交点，再按断口切段 —— 顺序不能反：
+    // 换拐角只在同一段边上动点，不会造出新的"断口"。
+    samples = snapCorners(samples, step)
+    runs = splitRuns(samples, step)
   } else {
     // Fallback for engines/shapes without getTotalLength: walk the bounding box perimeter.
     const bbox = el.getBBox()

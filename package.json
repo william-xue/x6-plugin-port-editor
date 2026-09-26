@@ -1,6 +1,6 @@
 {
   "name": "x6-plugin-port-editor",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "AntV X6 interactive pin editor: click on an element's outline to add a pin, hover a pin to remove it. Ships as a pure plugin — no X6 core changes required.",
   "type": "module",
   "main": "dist/index.cjs",

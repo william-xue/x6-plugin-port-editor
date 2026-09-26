@@ -2,7 +2,7 @@
 
 `examples/` 是一个**独立的消费方项目** —— 这是刻意的：
 
-- 它有自己的 `package.json`，插件依赖写成 `github:william-xue/x6-plugin-port-editor#v0.1.0`，
+- 它有自己的 `package.json`，插件依赖写成 `github:william-xue/x6-plugin-port-editor#v0.1.1`，
   跑 `npm install` 时**从 GitHub 真的装一遍**（npm 会 clone 并自动执行插件的 `prepare` 构建出 `dist/`）；
 - 页面加载的是 `../node_modules/x6-plugin-port-editor/dist/index.umd.js`，
   **不是仓库自带的构建产物** —— 所以你看到的，就是你自己项目里会长成什么样；

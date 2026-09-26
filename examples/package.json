@@ -9,6 +9,6 @@
   },
   "dependencies": {
     "@antv/x6": "^3.1.8",
-    "x6-plugin-port-editor": "github:william-xue/x6-plugin-port-editor#v0.1.0"
+    "x6-plugin-port-editor": "github:william-xue/x6-plugin-port-editor#v0.1.1"
   }
 }
