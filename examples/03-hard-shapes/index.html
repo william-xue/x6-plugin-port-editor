@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>例 3 · 难形状：直边 / 孔洞 / 多图形 / 开放折线</title>
+    <style>
+      body {
+        margin: 0;
+        font: 13px/1.7 -apple-system, "PingFang SC", Arial, sans-serif;
+        color: #1f1f1f;
+      }
+      header {
+        padding: 10px 14px;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      button {
+        font: inherit;
+        padding: 5px 12px;
+        border: 1px solid #5f95ff;
+        background: #fff;
+        color: #2b5fd9;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      button.active {
+        background: #5f95ff;
+        color: #fff;
+      }
+      #hint {
+        color: #666;
+        flex: 1 1 360px;
+      }
+      #wrap {
+        display: flex;
+        height: calc(100vh - 100px);
+      }
+      #graph {
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+      #panel {
+        width: 400px;
+        flex: none;
+        border-left: 1px solid #eee;
+        padding: 10px 14px;
+        overflow: auto;
+        background: #fafbfc;
+      }
+      #panel h3 {
+        margin: 0 0 8px;
+        font-size: 13px;
+      }
+      #panel table {
+        width: 100%;
+        border-collapse: collapse;
+        font: 11.5px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      #panel th,
+      #panel td {
+        text-align: left;
+        padding: 3px 4px;
+        border-bottom: 1px solid #eef1f5;
+        vertical-align: top;
+      }
+      #panel th {
+        color: #888;
+        font-weight: 500;
+      }
+      .ok {
+        color: #1677ff;
+      }
+      .warn {
+        color: #d4380d;
+        font-weight: 600;
+      }
+      .why {
+        margin: 12px 0 0;
+        color: #555;
+        font-size: 12px;
+      }
+      .why b {
+        color: #1f1f1f;
+      }
+      #status {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        color: #333;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <button id="btn-add-pin" type="button">添加引脚</button>
+      <button id="btn-clear" type="button">清空全部引脚</button>
+      <button id="btn-highlight" type="button">轮廓可视化</button>
+      <span id="hint">
+        五种"最容易贴不上"的形状摆在一起。点「添加引脚」，再依次点每条轮廓 ——
+        都会贴在**各自真实的轮廓**上，不是包围盒。右侧列出每个元件实际读到了几条轮廓。
+      </span>
+      <span id="status">ready</span>
+    </header>
+    <div id="wrap">
+      <div id="graph"></div>
+      <div id="panel">
+        <h3>插件实际读到的轮廓</h3>
+        <table id="readout">
+          <thead>
+            <tr><th>元件</th><th>几何元素</th><th>标签</th><th>轮廓长度</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+
+        <p class="why">
+          <b>① 直边（<code>&lt;line&gt;</code>）</b><br />
+          母线、横担、分隔线这类元件的主要轮廓就是一条直线。几何白名单里少一个
+          <code>line</code>，这个元件就**一条轮廓都读不到**（表格里会是 0 条），预览与落点全无。
+        </p>
+        <p class="why">
+          <b>② 带孔洞（一条 <code>&lt;path&gt;</code> 两个子路径）</b><br />
+          浏览器把多个子路径当成**一条曲线**，走到子路径交界处直接跳过去。若不按断口切开，
+          就会连出一条屏幕上不存在的斜线，引脚会落在空处。
+        </p>
+        <p class="why">
+          <b>③ 多图形（矩形 + 两个圆）</b><br />
+          变压器这类符号由好几个图形拼成。插件把它们全部当候选，**取离指针最近的那条**，
+          所以从哪边点就贴哪条边。
+        </p>
+        <p class="why">
+          <b>④ 同心圆环</b><br />
+          两个同心圆各自是独立轮廓：从外面点贴外圈，从内圈点贴内圈。
+        </p>
+        <p class="why">
+          <b>⑤ 开放折线（<code>&lt;polyline&gt;</code>）</b><br />
+          折线首尾本来不连。采样点首尾**不能用取模相连**，否则会凭空多出一条封口线。
+        </p>
+      </div>
+    </div>
+
+    <!-- 和别的例子一样走 UMD，不需要打包器 -->
+    <script src="../../node_modules/@antv/x6/dist/x6.min.js"></script>
+    <script src="../../dist/index.umd.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>

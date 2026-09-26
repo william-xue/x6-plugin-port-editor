@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>x6-plugin-port-editor · 轮廓缺陷案例</title>
+    <style>
+      body { margin: 0; font: 13px/1.6 -apple-system, "PingFang SC", Arial, sans-serif; color: #1f1f1f; }
+      header { padding: 8px 14px; border-bottom: 1px solid #eee; }
+      code { background: #f3f4f6; padding: 1px 4px; border-radius: 3px; }
+      #graph { height: calc(100vh - 60px); }
+    </style>
+  </head>
+  <body>
+    <header>
+      轮廓缺陷案例页（给 <code>test/defect-cases.sh</code> 用）——
+      每个节点只放一个要考的几何形状，落点用 <code>findNearestOutlinePoint</code> 直接量。
+    </header>
+    <div id="graph"></div>
+
+    <!-- 和 demo 一样走 UMD，不需要打包器 -->
+    <script src="../../node_modules/@antv/x6/dist/x6.min.js"></script>
+    <script src="../../dist/index.umd.js"></script>
+    <script src="./cases.js"></script>
+  </body>
+</html>

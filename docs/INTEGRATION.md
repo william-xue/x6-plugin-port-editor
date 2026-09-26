@@ -112,7 +112,7 @@ new PortEditor({ autoCreateGroup: false })   // 缺组时不写，只 console.wa
 
 ### 3.2 元件是异形轮廓（圆、多边形、变压器符号）—— 默认就能贴
 
-插件默认把节点 markup 里**所有几何图形**（`rect/circle/ellipse/path/polygon/polyline`）都当作候选轮廓，
+插件默认把节点 markup 里**所有几何图形**（`rect/circle/ellipse/path/polygon/polyline/line`）都当作候选轮廓，
 指针落在哪个附近就投影到哪条轮廓上，所以"矩形 + 两个圆"的变压器符号、六边形、自定义 path 都能贴。
 
 想指定只用某一条轮廓：
@@ -243,8 +243,8 @@ graph.translate(state.viewport.tx, state.viewport.ty)
 ```bash
 npm install && npm run build
 npm run test:e2e          # 插件的 59 条断言（真实 Chrome：模式守卫、贴轮廓、删引脚、拖拽建引脚、连线样式、导出导入）
-npm run test:examples     # 两个例子的 35 条断言（最小接入 + 电力场景，含选中态穿透与 History 一步撤销）
-npm test                  # 上面两套一起跑
+npm run test:examples     # 三个例子的 49 条断言（最小接入 + 难形状 + 电力场景）
+npm test                  # 上面三套一起跑（外加轮廓缺陷门禁，共 127 条）
 npm run demo              # http://127.0.0.1:8732/demo/index.html 手工验收（examples/ 也可直接打开）
 ```
 

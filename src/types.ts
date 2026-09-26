@@ -20,7 +20,7 @@ export interface PortEditorOptions {
   positionUnit?: PortEditorPositionUnit
   /**
    * CSS selector of the element used as the node outline. When omitted, every geometric
-   * shape of the node markup (rect/circle/ellipse/path/polygon/polyline) is used and the
+   * shape of the node markup (rect/circle/ellipse/path/polygon/polyline/line) is used and the
    * nearest one wins — that keeps custom, non-rectangular symbols working.
    */
   outlineSelector?: string

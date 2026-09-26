@@ -208,6 +208,71 @@ check "E2 导入成功" "true" "$(ev 'String(window.__ex.importJSON() === true)'
 check "E2 往返后状态完全一致" "$STATE_BEFORE" "$(ev 'window.__ex.pinState()')"
 check "E2 无页面报错" "0" "$(ev 'String((window.__errors || []).length)')"
 
+# ══════════════════════════ 例 3 · 难形状 ══════════════════════════
+# 这一节把"插件能处理哪些形状"钉成断言。数字都是插件实际读到的几何元素数，不是页面上另算的。
+echo "--- 例 3 · 03-hard-shapes ---"
+playwright-cli open --browser=chrome "$BASE/03-hard-shapes/index.html" >/dev/null
+sleep 1.2
+
+check "E3 页面加载" "true" "$(ev 'String(!!window.__ex)')"
+check "E3 五个难形状都在" "5" "$(ev 'String(window.__ex.nodeIds.length)')"
+
+# ① 直边：白名单漏 line 时这里会是 0 —— 这是本次修复最直接的证据
+check "E3 ① 直边 <line> 读到 1 条" "1:line" "$(ev "(() => { const i = window.__ex.outlineInfo('line-busbar'); return i.count + ':' + i.tags.join(','); })()")"
+# ② 一条 path 两个子路径：仍然算 1 个元素，但落点不能连到不存在的线上（下一条断言管）
+check "E3 ② 带孔洞 <path> 读到 1 条" "1:path" "$(ev "(() => { const i = window.__ex.outlineInfo('holed-plate'); return i.count + ':' + i.tags.join(','); })()")"
+# ③ 多图形：矩形 + 两个圆，全部当候选
+check "E3 ③ 变压器读到 3 条" "3:rect,circle,circle" "$(ev "(() => { const i = window.__ex.outlineInfo('transformer'); return i.count + ':' + i.tags.join(','); })()")"
+# ④ 同心圆环
+check "E3 ④ 同心圆环读到 2 条" "2:circle,circle" "$(ev "(() => { const i = window.__ex.outlineInfo('ring'); return i.count + ':' + i.tags.join(','); })()")"
+# ⑤ 开放折线
+check "E3 ⑤ 开放折线读到 1 条" "1:polyline" "$(ev "(() => { const i = window.__ex.outlineInfo('open-bracket'); return i.count + ':' + i.tags.join(','); })()")"
+
+# 轮廓可视化：叠加层元素数 = 五类元件读到的轮廓总数
+playwright-cli click "#btn-highlight" >/dev/null
+sleep 0.3
+check "E3 轮廓可视化覆盖全部 8 条轮廓" "8" "$(ev 'String(document.querySelectorAll("#pe-demo-highlight > *").length)')"
+playwright-cli click "#btn-highlight" >/dev/null
+sleep 0.2
+
+# 真实指针事件：直边元件上真的能加引脚（修复前这个元件一条轮廓都读不到）
+LINE_PT="$(ev "(() => { const p = window.__ex.outlinePoint('line-busbar', 0.5); return Math.round(p.client.x) + ' ' + Math.round(p.client.y); })()")"
+read -r LX LY <<EOF
+$LINE_PT
+EOF
+playwright-cli click "#btn-add-pin" >/dev/null
+sleep 0.25
+playwright-cli mousemove "$LX" "$LY" >/dev/null
+sleep 0.25
+check "E3 ① 悬停在直边上出现落点预览" "block" "$(ev 'document.querySelector(".x6-pe-preview").style.display')"
+playwright-cli mousedown >/dev/null
+playwright-cli mouseup >/dev/null
+sleep 0.25
+check "E3 ① 直边元件生成了引脚" "1" "$(ev "String(window.__ex.pinCount('line-busbar'))")"
+check "E3 ① 引脚落在直边中点 (100,60)" "100,60" "$(ev "(() => { const a = window.__ex.pinArgs('line-busbar','pin-1'); return a ? Math.round(a.x) + ',' + Math.round(a.y) : 'none'; })()")"
+
+# 真实指针事件：带孔洞元件点孔洞内壁也要落对（落点不能跑到那条不存在的斜线上）
+HOLE_PT="$(ev "(() => { const p = window.__ex.outlinePoint('holed-plate', 0.6); return Math.round(p.client.x) + ' ' + Math.round(p.client.y); })()")"
+read -r HX HY <<EOF
+$HOLE_PT
+EOF
+playwright-cli mousemove "$HX" "$HY" >/dev/null
+sleep 0.25
+playwright-cli mousedown >/dev/null
+playwright-cli mouseup >/dev/null
+sleep 0.25
+check "E3 ② 带孔洞元件生成了引脚" "1" "$(ev "String(window.__ex.pinCount('holed-plate'))")"
+# 落点必须真的在轮廓上：用采出来的点直接比（tol 2px）
+check "E3 ② 落点真的在轮廓上（≤2px）" "true" "$(ev "
+(() => {
+  const a = window.__ex.pinArgs('holed-plate','pin-1');
+  const p = window.__ex.outlinePoint('holed-plate', 0.6);
+  if (!a || !p) return 'false';
+  return String(Math.hypot(a.x - p.local.x, a.y - p.local.y) <= 2);
+})()")"
+playwright-cli press Escape >/dev/null
+check "E3 无页面报错" "0" "$(ev 'String((window.__errors || []).length)')"
+
 echo
 echo "=== summary: ${PASS} passed, ${FAIL} failed ==="
 exit $(( FAIL > 0 ? 1 : 0 ))

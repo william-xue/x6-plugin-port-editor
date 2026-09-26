@@ -27,7 +27,9 @@
     "prepare": "node build.mjs",
     "types": "tsc -p tsconfig.json",
     "demo": "node scripts/serve.mjs",
-    "test": "bash test/e2e.sh && bash test/e2e-examples.sh",
+    "test": "bash test/outline-defects.sh && bash test/e2e.sh && bash test/e2e-examples.sh",
+    "test:outline": "bash test/outline-defects.sh",
+    "test:measure": "bash test/measure-outline.sh",
     "test:e2e": "bash test/e2e.sh",
     "test:examples": "bash test/e2e-examples.sh"
   },

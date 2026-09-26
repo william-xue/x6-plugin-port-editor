@@ -2,7 +2,7 @@
 <html lang="zh-CN">
   <head>
     <meta charset="utf-8" />
-    <title>x6-plugin-port-editor · 例子</title>
+    <title>x6-plugin-port-editor · 给 AntV X6 加"点轮廓加引脚"</title>
     <style>
       body {
         margin: 0;
@@ -15,15 +15,20 @@
         font-size: 20px;
         margin: 0 0 6px;
       }
+      h2 {
+        font-size: 15px;
+        margin: 30px 0 8px;
+      }
       p.lead {
         color: #666;
-        margin: 0 0 22px;
+        margin: 0 0 18px;
+        max-width: 900px;
       }
       .cards {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
         gap: 14px;
-        max-width: 900px;
+        max-width: 1000px;
       }
       a.card {
         display: block;
@@ -54,7 +59,7 @@
         border-radius: 6px;
         padding: 10px 12px;
         font: 12px/1.7 ui-monospace, SFMono-Regular, Menlo, monospace;
-        max-width: 860px;
+        max-width: 900px;
         overflow-x: auto;
       }
       code {
@@ -63,46 +68,208 @@
         border-radius: 3px;
         font: 12px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
       }
+      table {
+        border-collapse: collapse;
+        background: #fff;
+        border: 1px solid #e6e8eb;
+        border-radius: 6px;
+        max-width: 1000px;
+        width: 100%;
+        font-size: 13px;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 8px 10px;
+        border-bottom: 1px solid #eef1f5;
+        vertical-align: top;
+      }
+      th {
+        color: #666;
+        font-weight: 500;
+        background: #f7f8fa;
+      }
+      td.muted {
+        color: #666;
+      }
+      .ok {
+        color: #1677ff;
+      }
+      .note {
+        color: #8a6d3b;
+        background: #fff8e6;
+        border: 1px solid #f0e0b8;
+        border-radius: 6px;
+        padding: 10px 12px;
+        max-width: 900px;
+        font-size: 13px;
+      }
+      footer {
+        margin-top: 34px;
+        color: #8a94a6;
+        font-size: 12px;
+      }
     </style>
   </head>
   <body>
-    <h1>x6-plugin-port-editor · 例子</h1>
+    <h1>x6-plugin-port-editor</h1>
     <p class="lead">
-      两个例子由浅入深，都基于 <code>dist/index.umd.js</code>，无需打包器即可打开。
-      完整说明（接入清单 / 共存 / 已知坑 / 实现原理）见
-      <code>docs/INTEGRATION.md</code> 与 <code>examples/README.md</code>。
+      给 AntV X6 加一个能力：<b>点元件轮廓就能加引脚（端子）</b>。
+      落点投影到元件**真实的 SVG 轮廓**（圆、多边形、自定义 path、直边、多图形拼合都行），
+      不是包围盒，也不用你手算坐标。纯插件，**零核心改动、零运行时依赖**。
     </p>
 
+    <h2>它替你解决什么问题</h2>
+    <table>
+      <thead>
+        <tr><th>原以为要自己做的</th><th>现在</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="muted">手算每个端子的坐标</td>
+          <td>点一下轮廓即可；坐标由 SVG 的 CTM 链换算，<b>平移 / 缩放 / 元件旋转都不用特判</b></td>
+        </tr>
+        <tr>
+          <td class="muted">端子在 resize 后跑位</td>
+          <td><code>positionUnit: 'local'</code>（像素偏移）或 <code>'percent'</code>（相对位置）两种语义任选</td>
+        </tr>
+        <tr>
+          <td class="muted">只能给矩形元件加端子</td>
+          <td>任意轮廓：圆、多边形、自定义 path、<b>直边（<code>&lt;line&gt;</code>）</b>、
+              <b>带孔洞的一条 path</b>、矩形 + 两个圆的变压器符号 —— 见
+              <a href="./03-hard-shapes/index.html">例 3</a></td>
+        </tr>
+        <tr>
+          <td class="muted">端子外观、组名要改核心代码</td>
+          <td>全在插件选项里：<code>group</code> / <code>idPrefix</code> / <code>groupConfig</code> / <code>outlineSelector</code></td>
+        </tr>
+        <tr>
+          <td class="muted">拖拽建端子要自己接 Dnd</td>
+          <td><code>portEditor.createDndDropValidator()</code> 一行接上（模板落到元件上变成端子，自身不落地）</td>
+        </tr>
+        <tr>
+          <td class="muted">加端子要能一步撤销</td>
+          <td>插件把"补组定义 + 加端子"合成一个 batch，接入 History 后是<b>一步撤销</b></td>
+        </tr>
+        <tr>
+          <td class="muted">和 Selection / 拖拽层打架</td>
+          <td>点击与落点走 <code>document.elementsFromPoint</code>，能<b>穿透选择框与拖拽层</b>（已实测共存）</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>怎么引用（四种方式，按推荐顺序）</h2>
+    <pre># ① 直接从 GitHub 装 —— npm 会 clone 并自动跑 prepare 构建出 dist
+#    （本机已实测：装完 node_modules/x6-plugin-port-editor/dist/ 里 mjs/cjs/umd/d.ts 齐全）
+npm install github:william-xue/x6-plugin-port-editor
+
+# ② 锁到某个提交，可复现（机制同 ① ，未单独实测）
+npm install github:william-xue/x6-plugin-port-editor#&lt;commit-sha&gt;
+
+# ③ 只想要构建产物：把仓库里的 dist/ 拷进项目，零安装零编译
+import { PortEditor } from './vendor/port-editor/index.mjs'
+
+# ④ 只用源码：把 src/ 拷进项目（要求你的项目能编译 TS + 装了 @antv/x6）
+import { PortEditor } from './vendor/port-editor/index'</pre>
+
+    <p class="lead">
+      不想用打包器也行 —— 直接用 UMD 产物，<code>window.X6PluginPortEditor.PortEditor</code>：
+    </p>
+    <pre>&lt;script src="x6/dist/x6.min.js"&gt;&lt;/script&gt;
+&lt;script src="x6-plugin-port-editor/dist/index.umd.js"&gt;&lt;/script&gt;</pre>
+
+    <p class="lead">
+      peerDependency：<code>@antv/x6 &gt;= 3.0.0</code>（开发时实测 3.1.8）。
+      本仓库<b>不发 npm</b>，上面四条就是全部引用方式；细节与三个环境坑见
+      <code>README.md §2.1</code>。
+    </p>
+
+    <h2>例子（都在本仓库里，打开就能跑）</h2>
     <div class="cards">
       <a class="card" href="./01-basic/index.html">
         <b>例 1 · 最小接入</b>
         <span>
-          已经有一个跑着的 X6 图，怎么把插件接上去：页面左侧列出「你原有的代码」，右侧是「新增的 8 行」，
-          代码与页面一一对应。含：进入添加模式、点轮廓生成引脚、从引脚拉线、悬停删除。
+          已经有一个跑着的 X6 图，怎么把插件接上去：左侧列出「你原有的代码」与「新增的 8 行」，
+          代码与页面行为一一对应。含加引脚 / 从引脚拉线 / 悬停删除全链路。
+        </span>
+      </a>
+      <a class="card" href="./03-hard-shapes/index.html">
+        <b>例 3 · 难形状（推荐先看这个）</b>
+        <span>
+          五种最容易"贴不上"的形状摆在一起：直边、带孔洞、矩形+双圆、同心圆环、开放折线。
+          右侧列出插件<b>实际读到了几条轮廓</b>，「轮廓可视化」把同一结果画到画布上。
         </span>
       </a>
       <a class="card" href="./02-power-editor/index.html">
         <b>例 2 · 电力组件场景（完整）</b>
         <span>
-          自定义元件形状（CT / 主变 / 断路器，<code>Graph.registerNode</code>）、
-          自己命名的端子组与端子样式、调色板拖元件与拖端子、
+          自定义元件形状（CT / 主变 / 断路器）、项目自己的端子组与样式、调色板拖元件与拖端子、
           与 Selection / History 共存（端子增删可撤销）、导出 / 导入整图。
+        </span>
+      </a>
+      <a class="card" href="../demo/index.html">
+        <b>完整 demo · 带工具栏</b>
+        <span>
+          元件调色板、连线样式（含潮流方向虚线动画）、JSON 导出/导入，
+          以及"从调色板拖一个引脚到元件上"的另一种入口。
         </span>
       </a>
     </div>
 
-    <h1 style="font-size: 15px; margin: 28px 0 6px">本地怎么跑</h1>
-    <pre>cd x6-plugin-port-editor
+    <h2>本地怎么跑</h2>
+    <pre>git clone https://github.com/william-xue/x6-plugin-port-editor.git
+cd x6-plugin-port-editor
 npm install          # 会自动构建 dist（prepare 脚本）
-npm run demo         # 起静态服务
+npm run demo         # 起静态服务（端口 8732）
 # 然后打开：
-#   http://127.0.0.1:8732/examples/index.html
-#   http://127.0.0.1:8732/examples/01-basic/index.html
-#   http://127.0.0.1:8732/examples/02-power-editor/index.html</pre>
+#   http://127.0.0.1:8732/examples/index.html          （本页）
+#   http://127.0.0.1:8732/examples/03-hard-shapes/      （难形状）
+npm test             # 127 条断言：轮廓缺陷门禁 19 + 插件 e2e 59 + 例子 e2e 49</pre>
 
-    <p class="lead" style="margin-top: 18px">
-      例子里用到的能力都可以照抄到你自己的项目：换元件形状改 <code>Graph.registerNode</code> 的定义，
-      换端子外观改 <code>TERMINAL_GROUP</code>，端子组名通过 <code>new PortEditor({ group: '你的组名' })</code> 指定。
+    <h2>已知边界（诚实写在这里）</h2>
+    <table>
+      <thead>
+        <tr><th>项</th><th>状态</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>visibility:hidden</code> 的形状</td>
+          <td class="muted">
+            仍然参与落点（有尺寸就算候选）。用透明/隐藏矩形当"命中区"是常见做法，
+            一刀切跳过会把这类用法弄坏 —— <b>属设计取舍，尚未处理</b>。
+          </td>
+        </tr>
+        <tr>
+          <td>长轮廓上的拐角</td>
+          <td class="muted">
+            均匀采样会在拐角处削掉一点（实测周长 1580 的元件偏 2.13）。<b>尚未处理</b>，属精度增强。
+          </td>
+        </tr>
+        <tr>
+          <td>引脚拖动调整位置</td>
+          <td class="muted">
+            不做：与"从 magnet 拉线"是同一个手势，冲突未解（X6 issue #4648 / #4649）。
+          </td>
+        </tr>
+        <tr>
+          <td>接线时自动生成引脚</td>
+          <td class="muted">
+            <b>刻意不做</b>（设计红线）：端子是有编号/类型/方向的实体，
+            不该因为"手一抖拖了条线"就凭空多出来。入口必须是人明确要求的。
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p class="note">
+      「难形状」那一页的五类形状都有常驻断言守着（<code>npm run test:examples</code>），
+      其中直边与带孔洞两条是 2026-09-26 修掉的真实缺陷 ——
+      细节与前后对照数字见 <code>test/EVIDENCE.md §6</code>。
     </p>
+
+    <footer>
+      上游也有一个同源的 PR：<code>antvis/X6#5093</code>（把这套实现进 X6 内置插件目录）。
+      本仓库是它的可独立安装版本，也是它的对照实现。
+    </footer>
   </body>
 </html>

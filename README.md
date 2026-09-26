@@ -6,18 +6,24 @@ AntV X6 的**交互式引脚（pin / port）编辑器**插件：点一下工具�
 > 与你已有元件形状/端口定义共存、与 Dnd/Selection/History 等插件共存、添加模式内临时改动哪三个全局开关、
 > 已知坑速查表、以及插件依赖的 X6 公开 API 清单（升级 X6 后自查用）。
 >
-> **想看跑起来的代码？直接看 [`examples/`](examples/README.md)** ——
-> 例 1 最小接入（原有代码 / 新增 8 行并排对照）、例 2 电力组件场景（自定义元件形状 + 自己的端子组 +
-> 选中态穿透 + History 一步撤销 + 调色板拖拽 + 导出导入），并附**实现原理逐步讲解**。
+> **想看跑起来的代码？直接看 [`examples/index.html`](examples/index.html)** ——
+> 一页讲清「它替你解决什么问题 + 四种引用方式」，然后：
+> **例 1** 最小接入（原有代码 / 新增 8 行并排对照）、
+> **例 3 难形状**（直边 / 带孔洞 / 矩形+双圆 / 同心圆环 / 开放折线，右侧列出插件实际读到了几条轮廓，附「轮廓可视化」）、
+> **例 2** 电力组件场景（自定义元件形状 + 自己的端子组 + 选中态穿透 + History 一步撤销 + 调色板拖拽 + 导出导入），
+> 并附**实现原理逐步讲解**。
 
 - 纯插件形态，**不需要改 X6 核心**，也不依赖上游合并
 - 对 `@antv/x6` 只有**类型引用**，构建产物零运行时依赖（ESM / CJS / UMD 三种）
-- 支持**异形元件**：落点是投影到元件真实轮廓（circle / polygon / path / rect…）上，不是包围盒
+- 支持**异形元件**：落点投影到元件真实轮廓上，不是包围盒 ——
+  圆 / 多边形 / 自定义 path / **直边 `<line>`** / **带孔洞的一条 path** / **矩形+双圆拼成的变压器符号** 都能贴
+  （难形状见 `examples/03-hard-shapes/`，每类都有常驻断言）
 - 两种入口：**点一下加引脚**（编辑模式）与**从调色板拖一个引脚到元件上**（Dnd）
 - 图可导出为 JSON 再原样复原（含引脚与"从哪个引脚出发"的连线绑定）
-- 版本：v0.1.0 ｜ 已在 @antv/x6 **3.1.8** + 真实 Chrome 上通过 **94 条**端到端断言（插件 59 + 例子 35，见 `test/EVIDENCE.md` 与 `npm test`）
+- 版本：v0.1.0 ｜ 已在 @antv/x6 **3.1.8** + 真实 Chrome 上通过端到端断言（轮廓缺陷门禁 19 + 插件 59 + 例子 49，见 `test/EVIDENCE.md` 与 `npm test`）
 - 上游形态：同一份实现已按官方插件形态提交到主仓 —— **antvis/X6#5093**
   （`src/plugin/port-editor/` + `site/docs/tutorial/plugins/port-editor.{zh,en}.md` + 20 条 jsdom 单测；本仓是被上游接受前的可用形态，两者并行维护）
+- **唯一对外入口是 GitHub**（本仓不发 npm）：`npm install github:william-xue/x6-plugin-port-editor`
 
 ---
 
@@ -49,24 +55,35 @@ graph.container                                    // 覆盖层宿主（与内�
 
 ## 2. 安装
 
-三种方式任选：
-
 ```bash
-# A. 本地路径安装（推荐，来自本仓库）
-npm install /path/to/x6-plugin-port-editor
+# A. 直接从 GitHub 装（推荐 —— npm 会 clone 并自动跑 prepare 构建出 dist）
+npm install github:william-xue/x6-plugin-port-editor
 
-# B. 直接在浏览器里用 UMD（无需打包器）
+# B. 锁到某个提交，可复现（机制同 A）
+npm install github:william-xue/x6-plugin-port-editor#<commit-sha>
+
+# C. 本地路径（在同一个仓库里改插件、边改边用时用这个）
+npm install /path/to/x6-plugin-port-editor
+```
+
+```js
+// D. 打包器里 import
+import { PortEditor } from 'x6-plugin-port-editor'
+```
+
+不想用打包器就用 UMD 产物（全局 `X6PluginPortEditor`）：
+
+```html
 <script src="x6/node_modules/@antv/x6/dist/x6.min.js"></script>
 <script src="x6-plugin-port-editor/dist/index.umd.js"></script>
 <!-- window.X6PluginPortEditor.PortEditor -->
 ```
 
-```js
-// C. 打包器里 import
-import { PortEditor } from 'x6-plugin-port-editor'
-```
-
+> **本仓库不发 npm**，A–D 就是全部引用方式（A 已实测：装完 `dist/` 里 mjs/cjs/umd/d.ts 齐全，`import` 正常）。
 > peerDependency：`@antv/x6 >= 3.0.0`（开发时实测 3.1.8）。
+
+想先看效果再装？打开 `examples/index.html` —— 一页讲清"它替你解决什么问题 + 四种引用方式"，
+`examples/03-hard-shapes/` 把最难的五种形状摆在一起，右侧直接列出插件读到了几条轮廓。
 
 ### 2.1 只在自己项目里用、不发 npm —— 四种方式（均已实测）
 
@@ -325,6 +342,8 @@ new PortEditor(options?)  // 也可以 graph.use(new PortEditor(), options)
 9. **`view.can('nodeMovable')` 每次调用都读 `graph.options.interacting`**（`src/view/cell/index.ts:353`），因此可以在运行时叠加一个代理函数、退出时还原，不必改任何 cell 数据；panning 同理用公开的 `graph.disablePanning()/enablePanning()`。
 10. **X6 的 `panning.enabled` 默认就是 `true`**，而 `interacting: false` 只关掉元件拖动 —— 只读小图（调色板）必须显式 `panning: false`，否则在它上面按下会平移它自己。
 11. **拖拽落点判定要穿透覆盖层**：Dnd 的拖拽容器是 `pointer-events: auto`，`document.elementFromPoint` 在拖动过程中只能看到它。插件改用 `document.elementsFromPoint`（复数，返回堆叠栈）逐层找 `.x6-node`，再加一个 8px 光晕的最近盒兜底，落点偏几像素也能落在元件上。
+12. **轮廓白名单必须含 `line`**（2026-09-26 修）：`getPointAtLength` 是所有几何元素通用的，但选择器少一个标签就等于**整个节点放不了引脚** —— 实测一个只用 `<line>` 画直边的元件，`collectOutlineElements` 返回 0 个元素，预览与落点全无。直边在电力图里到处都是（母线、横担、分隔线）。
+13. **采样点不能用取模绕回首尾**（2026-09-26 修）：一条 `<path>` 可以有好几个子路径（带孔洞的形状），`getPointAtLength` 把它们**当成一条曲线**，交界处直接跳过去；数组首尾同理，它们并不是相邻的两个点。原实现用 `(bestIdx ± 1) % samples.length` 连接，于是连出**屏幕上不存在的线**：实测贴着断口端点 (21,21) 问最近轮廓点，落点就落在这条不存在的线上，离查询点只有 0.32，而真实边在 1.00 外。修法：先把采样点按断口切成若干 `runs`，段只在同一个 run 内相连，不再绕回。
 
 ---
 
@@ -342,6 +361,32 @@ new PortEditor(options?)  // 也可以 graph.use(new PortEditor(), options)
   端子是有编号/类型/方向的实体，不该因为"手一抖拖了条线"就凭空多出一个无名引脚；图纸的严谨性优先于操作省事。
 - ❌ 同理不做：接线时"附近没有引脚就自动补一个"的折中变体。吸附到**既有**引脚可以谈，凭空**新建**不行。
 - 任何将来新增的入口，都必须能回答一句："这个引脚是用户在哪一步明确要求创建的？"
+
+### 7.2 轮廓缺陷审计（2026-09-26，真实 Chrome + 真实 X6，数字可复跑）
+
+```bash
+npm run test:outline    # 19 条断言门禁（红绿）
+npm run test:measure    # 同一批点的测量报告（只打印数字）
+```
+
+案例页 `test/defect-cases/`，每个节点只放一个要考的几何形状，查询点与落点都在**节点本地坐标**里比。
+
+| # | 案例 | 修复前 | 修复后 | 结论 |
+|---|------|--------|--------|------|
+| ① | `<line>` 当轮廓 | 元素 **0** 个，落点**无** | 元素 1 个，落点距离 0.00 | **已修**（白名单补 `line`） |
+| ② | 开放折线，贴首点 (21,21) 问 | 落点落在**封口线**上，距离 **0.32** | 落在真实上边，距离 1.00 | **已修**（不再绕回首尾） |
+| ③ | 两个子路径，贴缺口起点 (21,21) 问 | 落点落在**跨子路径连线**上，距离 **0.29** | 落在真实左边，距离 1.00 | **已修**（按断口切 run） |
+| ③ | 同上，贴孔洞首点 (58,48) 问 | 距离 **0.40**（在幻影线上） | 落在孔洞角 (60,50)，距离 2.83 | **已修** |
+| ④ | `visibility:hidden` 的形状 | 参与落点，距离 0.00 | **仍然参与** | 未改 —— 见下 |
+| ⑤ | 长周长矩形（1580）拐角 | 偏 **2.13** | **仍然偏 2.13** | 未改 —— 见下 |
+
+**为什么④⑤这次不动**（不是漏了，是判断）：
+
+- **④** 用透明/隐藏矩形当"命中区"是常见做法，一刀切跳过会把这类用法弄坏。该不该处理是设计取舍，交给维护者拍板。
+- **⑤** 均匀采样会把拐角削掉一块（深度 ≈ 步长/2，这里 1580/240 ≈ 6.58 → 削掉 2.13）。属**精度增强**，会让 diff 变大；单独一次改进更合适。
+  （参照：同一成因在课程仓 13.6 里被修过；按 步长/2 推算，周长 4000 的零件会削掉约 8.4 —— 那是**推算**，不是实测。）
+
+**③ 为什么"中点"测不出来，只有贴着端点才测得出来**：本实现是"先找最近采样点，再看它两侧的段"，不是全网段扫描。断口中部被真实采样点遮住，只有断口端点本身成为最近采样点时才会被够到。这一点在对照课程仓（7.3 是全段扫描）时表现不同 —— 算法不同，缺陷的"可触及面"也不同。
 
 ### 7.1 v0.1.0 不做
 - 引脚拖动调整位置（与 magnet 拉线同手势冲突，需先解决 #4648/#4649 的语义）
